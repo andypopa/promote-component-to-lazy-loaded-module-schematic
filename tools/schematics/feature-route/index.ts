@@ -13,22 +13,23 @@ import * as ts from 'typescript';
 import {
   insertImport,
   getSourceNodes,
-  InsertChange
+  InsertChange,
+  findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
 
 function addComponentToRoute(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const featureRoutingPath = `${
       options.appProjectRoot
-    }/src/app/${strings.dasherize(options.feature)}/${strings.dasherize(
-      options.feature
+    }/src/app/${strings.dasherize(options.component)}/${strings.dasherize(
+      options.component
     )}-routing.module.ts`;
 
     // tslint:disable-next-line
     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
 
     const src = ts.createSourceFile(
-      `${strings.dasherize(options.feature)}-routing.module.ts`,
+      `${strings.dasherize(options.component)}-routing.module.ts`,
       featureRouting,
       ts.ScriptTarget.Latest,
       true
@@ -37,7 +38,7 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
     const route = `{
       path: '',
       pathMatch: 'full',
-      component: ${strings.capitalize(options.feature)}ContainerComponent
+      component: ${strings.capitalize(options.component)}ContainerComponent
     }`;
 
     const nodes = getSourceNodes(src);
@@ -84,9 +85,9 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
       const componentChange = insertImport(
         src,
         featureRoutingPath,
-        `${strings.capitalize(options.feature)}ContainerComponent`,
-        `./${strings.dasherize(options.feature)}-container/${strings.dasherize(
-          options.feature
+        `${strings.capitalize(options.component)}ContainerComponent`,
+        `./${strings.dasherize(options.component)}-container/${strings.dasherize(
+          options.component
         )}-container.component`,
         false
       );
@@ -120,17 +121,12 @@ function addRouteToApp(options: NormalizedSchema): Rule {
     );
 
     const route = `{
-      path: '${options.feature}',
+      path: '${options.component}',
       loadChildren: './${strings.dasherize(
-        options.feature
-      )}/${strings.dasherize(options.feature)}.module#${strings.capitalize(
-      options.feature
-    )}Module'${
-      options.dummy
-        ? `,
-      canLoad: [DummyGuard]`
-        : ''
-    }
+        options.component
+      )}/${strings.dasherize(options.component)}.module#${strings.capitalize(
+      options.component
+    )}Module'
     }`;
 
     const nodes = getSourceNodes(src);
@@ -174,22 +170,6 @@ function addRouteToApp(options: NormalizedSchema): Rule {
       const recorder = host.beginUpdate(appRoutingPath);
       recorder.insertRight(pos, toInsert);
 
-      if (options.dummy) {
-        const dummyChange = insertImport(
-          src,
-          `${options.appProjectRoot}/src/app/app-routing.module.ts`,
-          'DummyGuard',
-          '@martzcodes/core',
-          false
-        );
-        if (dummyChange instanceof InsertChange) {
-          recorder.insertLeft(
-            (dummyChange as InsertChange).pos,
-            (dummyChange as InsertChange).toAdd
-          );
-        }
-      }
-
       host.commitUpdate(recorder);
 
       return host;
@@ -199,15 +179,12 @@ function addRouteToApp(options: NormalizedSchema): Rule {
 
 function addNavigation(options: NormalizedSchema): Rule {
   return (host: Tree) => {
-    if (!options.navigation) {
-      return host;
-    }
+    return host;
+
     const componentPath = `${options.appProjectRoot}/src/app/app.component.ts`;
     const navPath = `{name: '${strings.capitalize(
-      options.feature
-    )}', router: '/${options.feature}', unsecure: ${
-      options.dummy ? 'false' : 'true'
-    }}`;
+      options.component
+    )}', router: '/${options.component}'}`;
     // tslint:disable-next-line
     const appComponent = host.read(componentPath)!.toString('utf-8');
 
@@ -266,6 +243,79 @@ function addNavigation(options: NormalizedSchema): Rule {
   };
 }
 
+function getComponentPath(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const appModulePath = `${
+      options.appProjectRoot
+    }/src/app/app.module.ts`;
+
+    // tslint:disable-next-line
+    const appModule = host.read(appModulePath)!.toString('utf-8');
+
+    const src = ts.createSourceFile(
+      `app.module.ts`,
+      appModule,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const rootNode = src;
+    const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
+
+    // const nodes = getSourceNodes(src);
+    // const routeNodes = nodes
+    //   .filter((n: ts.Node) => {
+    //     if (n.kind === ts.SyntaxKind.VariableDeclaration) {
+    //       if (
+    //         n.getChildren().findIndex(c => {
+    //           return (
+    //             c.kind === ts.SyntaxKind.Identifier && c.getText() === 'routes'
+    //           );
+    //         }) !== -1
+    //       ) {
+    //         return true;
+    //       }
+    //     }
+    //     return false;
+    //   })
+    //   .map((n: ts.Node) => {
+    //     const arrNodes = n
+    //       .getChildren()
+    //       .filter(c => c.kind === ts.SyntaxKind.ArrayLiteralExpression);
+    //     return arrNodes[arrNodes.length - 1];
+    //   });
+
+    // if (routeNodes.length === 1) {
+    //   const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+    //   const pos = navigation.getStart() + 1;
+    //   const fullText = navigation.getFullText();
+
+
+    //   const recorder = host.beginUpdate(featureRoutingPath);
+    //   recorder.insertRight(pos, toInsert);
+
+    //   const componentChange = insertImport(
+    //     src,
+    //     featureRoutingPath,
+    //     `${strings.capitalize(options.component)}ContainerComponent`,
+    //     `./${strings.dasherize(options.component)}-container/${strings.dasherize(
+    //       options.component
+    //     )}-container.component`,
+    //     false
+    //   );
+    //   if (componentChange instanceof InsertChange) {
+    //     recorder.insertLeft(
+    //       (componentChange as InsertChange).pos,
+    //       (componentChange as InsertChange).toAdd
+    //     );
+    //   }
+
+    //   host.commitUpdate(recorder);
+      return host;
+    }
+  // };
+}
+
 function showTree(node: ts.Node, indent: string = '    '): void {
   console.log(indent + ts.SyntaxKind[node.kind]);
 
@@ -302,19 +352,20 @@ export default function(schema: Schema): Rule {
       );
     }
     return chain([
-      externalSchematic('@schematics/angular', 'module', {
-        project: options.project,
-        name: `${options.feature}`,
-        routing: true
-      }),
-      externalSchematic('@schematics/angular', 'component', {
-        project: options.project,
-        name: `${options.feature}/${options.feature}-container`,
-        changeDetection: 'OnPush'
-      }),
-      addComponentToRoute(options),
-      addRouteToApp(options),
-      addNavigation(options)
+      getComponentPath(options),
+      // externalSchematic('@schematics/angular', 'module', {
+      //   project: options.project,
+      //   name: `${options.component}`,
+      //   routing: true
+      // }),
+      // externalSchematic('@schematics/angular', 'component', {
+      //   project: options.project,
+      //   name: `${options.component}/${options.component}-container`,
+      //   changeDetection: 'OnPush'
+      // }),
+      // addComponentToRoute(options),
+      // addRouteToApp(options),
+      // addNavigation(options)
     ]);
   };
 }
