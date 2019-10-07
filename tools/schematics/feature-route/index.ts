@@ -424,6 +424,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     } else if (targetNodeIsLast) {
       console.log('node is last');
       removeInterval.start = targetNode.getStart();
+      console.log('declarationsParentNode.getEnd()', declarationsParentNode.getEnd());
       removeInterval.end = declarationsParentNode.getEnd() - 1;
     } else {
       // target node is in-between
