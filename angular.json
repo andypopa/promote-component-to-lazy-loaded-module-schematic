@@ -129,7 +129,7 @@
           }
         },
         "test": {
-          "builder": "@nrwl/builders:jest",
+          "builder": "@nrwl/jest:jest",
           "options": {
             "jestConfig": "apps/qwerty/jest.config.js",
             "tsConfig": "apps/qwerty/tsconfig.spec.json",
@@ -144,7 +144,7 @@
       "prefix": "",
       "architect": {
         "e2e": {
-          "builder": "@nrwl/builders:cypress",
+          "builder": "@nrwl/cypress:cypress",
           "options": {
             "cypressConfig": "apps/qwerty-e2e/cypress.json",
             "tsConfig": "apps/qwerty-e2e/tsconfig.e2e.json",
@@ -171,7 +171,7 @@
       "typescriptMismatch": false,
       "versionMismatch": false
     },
-    "defaultCollection": "@nrwl/schematics"
+    "defaultCollection": "@nrwl/angular"
   },
   "schematics": {
     "@nrwl/angular:application": {

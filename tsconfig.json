@@ -17,7 +17,8 @@
     "baseUrl": ".",
     "paths": {
       "@martzcodes/core": ["libs/core/src/index.ts"]
-    }
+    },
+    "rootDir": "."
   },
   "exclude": ["node_modules", "tmp"]
 }
