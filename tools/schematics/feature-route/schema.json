@@ -6,12 +6,14 @@
     "project": {
       "type": "string",
       "description": "Project name",
-      "x-prompt": "Which project?"
+      "x-prompt": "Which project?",
+      "default": "qwerty"
     },
     "component": {
       "type": "string",
       "description": "Component class name",
-      "x-prompt": "Which component (class name i.e. MyNewComponent)?"
+      "x-prompt": "Which component (class name i.e. MyNewComponent)?",
+      "default": "BrowserModule"
     }
   },
   "required": ["project", "component"]

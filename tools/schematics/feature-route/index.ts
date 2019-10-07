@@ -6,6 +6,12 @@ import {
   SchematicsException,
   externalSchematic
 } from '@angular-devkit/schematics';
+import {
+  findImports,
+  ImportKind,
+  isImportDeclaration,
+  isNamedImports,
+} from "tsutils";
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
 import Schema from './schema';
 import { strings } from '@angular-devkit/core';
@@ -17,13 +23,17 @@ import {
   findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
 
+function isWebComponent(element) {
+  return element.tagName.includes("-");
+}
+
 function addComponentToRoute(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const featureRoutingPath = `${
       options.appProjectRoot
-    }/src/app/${strings.dasherize(options.component)}/${strings.dasherize(
-      options.component
-    )}-routing.module.ts`;
+      }/src/app/${strings.dasherize(options.component)}/${strings.dasherize(
+        options.component
+      )}-routing.module.ts`;
 
     // tslint:disable-next-line
     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
@@ -108,7 +118,7 @@ function addRouteToApp(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appRoutingPath = `${
       options.appProjectRoot
-    }/src/app/app-routing.module.ts`;
+      }/src/app/app-routing.module.ts`;
 
     // tslint:disable-next-line
     const appRouting = host.read(appRoutingPath)!.toString('utf-8');
@@ -123,8 +133,8 @@ function addRouteToApp(options: NormalizedSchema): Rule {
     const route = `{
       path: '${options.component}',
       loadChildren: './${strings.dasherize(
-        options.component
-      )}/${strings.dasherize(options.component)}.module#${strings.capitalize(
+      options.component
+    )}/${strings.dasherize(options.component)}.module#${strings.capitalize(
       options.component
     )}Module'
     }`;
@@ -247,7 +257,7 @@ function getComponentPath(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appModulePath = `${
       options.appProjectRoot
-    }/src/app/app.module.ts`;
+      }/src/app/app.module.ts`;
 
     // tslint:disable-next-line
     const appModule = host.read(appModulePath)!.toString('utf-8');
@@ -259,8 +269,54 @@ function getComponentPath(options: NormalizedSchema): Rule {
       true
     );
 
-    const rootNode = src;
-    const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
+    for (const importNode of findImports(src, ImportKind.All)) {
+      const parentNode = importNode.parent;
+
+      // Disable strict-boolean-expressions for the next few lines so our &&
+      // checks can help type inference figure out if when don't have undefined.
+      // tslint:disable strict-boolean-expressions
+
+      const importClause =
+          parentNode && isImportDeclaration(parentNode) ? parentNode.importClause : undefined;
+
+      // Below, check isNamedImports to rule out the
+      // `import * as ns from "..."` case.
+      const importsSpecificNamedExports =
+          importClause &&
+          importClause.namedBindings &&
+          isNamedImports(importClause.namedBindings);
+        console.log("TCL: importsSpecificNamedExports", importsSpecificNamedExports)
+
+      if (!importsSpecificNamedExports) {
+        continue;
+      }
+
+      const namedImportsElementNameEscapedTexts = (importClause.namedBindings as ts.NamedImports)
+        .elements.map((ni) => (ni.name.escapedText));
+      console.log(importNode.text, namedImportsElementNameEscapedTexts);
+      console.log(parentNode);
+    }
+
+    // const rootNode = src;
+    // const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
+    // allImports.forEach((importDeclaration) => {
+    //   console.log(ts.isImportDeclaration(importDeclaration));
+    //   // console.log(importDeclaration.kind);
+    //   console.log(importDeclaration.getSourceFile());
+    //   // console.log(importDeclaration);
+    // });
+    // // get nodes that map to import statements from the file fileName
+    // const relevantImports = allImports.filter(node => {
+    //   // StringLiteral of the ImportDeclaration is the import file (fileName in this case).
+    //   const importFiles = node.getChildren()
+    //     .filter(child => {
+    //       return child.kind === ts.SyntaxKind.StringLiteral})
+    //     .map(n => (n as ts.StringLiteral).text);
+    //   return importFiles.filter(file => file === options.component).length === 1;
+    // });
+
+    // console.log("TCL: relevantImports", relevantImports)
+
 
     // const nodes = getSourceNodes(src);
     // const routeNodes = nodes
@@ -311,8 +367,8 @@ function getComponentPath(options: NormalizedSchema): Rule {
     //   }
 
     //   host.commitUpdate(recorder);
-      return host;
-    }
+    return host;
+  }
   // };
 }
 
@@ -341,7 +397,7 @@ function normalizeOptions(host: Tree, options: Schema): NormalizedSchema {
   };
 }
 
-export default function(schema: Schema): Rule {
+export default function (schema: Schema): Rule {
   return (host: Tree, context: SchematicContext) => {
     const options = normalizeOptions(host, schema);
 
@@ -351,6 +407,7 @@ export default function(schema: Schema): Rule {
         `Project ${options.project} is not in angular.json file!`
       );
     }
+
     return chain([
       getComponentPath(options),
       // externalSchematic('@schematics/angular', 'module', {
