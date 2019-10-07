@@ -31,15 +31,15 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const featureRoutingPath = `${
       options.appProjectRoot
-      }/src/app/${strings.dasherize(options.component)}/${strings.dasherize(
-        options.component
+      }/src/app/${strings.dasherize(options.componentClassName)}/${strings.dasherize(
+        options.componentClassName
       )}-routing.module.ts`;
 
     // tslint:disable-next-line
     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
 
     const src = ts.createSourceFile(
-      `${strings.dasherize(options.component)}-routing.module.ts`,
+      `${strings.dasherize(options.componentClassName)}-routing.module.ts`,
       featureRouting,
       ts.ScriptTarget.Latest,
       true
@@ -48,7 +48,7 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
     const route = `{
       path: '',
       pathMatch: 'full',
-      component: ${strings.capitalize(options.component)}ContainerComponent
+      component: ${strings.capitalize(options.componentClassName)}ContainerComponent
     }`;
 
     const nodes = getSourceNodes(src);
@@ -95,9 +95,9 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
       const componentChange = insertImport(
         src,
         featureRoutingPath,
-        `${strings.capitalize(options.component)}ContainerComponent`,
-        `./${strings.dasherize(options.component)}-container/${strings.dasherize(
-          options.component
+        `${strings.capitalize(options.componentClassName)}ContainerComponent`,
+        `./${strings.dasherize(options.componentClassName)}-container/${strings.dasherize(
+          options.componentClassName
         )}-container.component`,
         false
       );
@@ -131,11 +131,11 @@ function addRouteToApp(options: NormalizedSchema): Rule {
     );
 
     const route = `{
-      path: '${options.component}',
+      path: '${options.componentClassName}',
       loadChildren: './${strings.dasherize(
-      options.component
-    )}/${strings.dasherize(options.component)}.module#${strings.capitalize(
-      options.component
+      options.componentClassName
+    )}/${strings.dasherize(options.componentClassName)}.module#${strings.capitalize(
+      options.componentClassName
     )}Module'
     }`;
 
@@ -193,8 +193,8 @@ function addNavigation(options: NormalizedSchema): Rule {
 
     const componentPath = `${options.appProjectRoot}/src/app/app.component.ts`;
     const navPath = `{name: '${strings.capitalize(
-      options.component
-    )}', router: '/${options.component}'}`;
+      options.componentClassName
+    )}', router: '/${options.componentClassName}'}`;
     // tslint:disable-next-line
     const appComponent = host.read(componentPath)!.toString('utf-8');
 
@@ -253,7 +253,38 @@ function addNavigation(options: NormalizedSchema): Rule {
   };
 }
 
-function getComponentPath(options: NormalizedSchema): Rule {
+function getComponentImportDetails(src, componentClassName) {
+  for (const importNode of findImports(src, ImportKind.All)) {
+    const parentNode = importNode.parent;
+
+    // Disable strict-boolean-expressions for the next few lines so our &&
+    // checks can help type inference figure out if when don't have undefined.
+    // tslint:disable strict-boolean-expressions
+    const importClause =
+        parentNode && isImportDeclaration(parentNode) ? parentNode.importClause : undefined;
+
+    // Below, check isNamedImports to rule out the
+    // `import * as ns from "..."` case.
+    const importsSpecificNamedExports =
+        importClause &&
+        importClause.namedBindings &&
+        isNamedImports(importClause.namedBindings);
+
+    if (!importsSpecificNamedExports) {
+      continue;
+    }
+
+    const namedImportsElementNameEscapedTexts = (importClause.namedBindings as ts.NamedImports)
+      .elements.map((ni) => String(ni.name.escapedText));
+
+    if (namedImportsElementNameEscapedTexts.indexOf(componentClassName) !== -1) {
+      return { componentPath: importNode.text, parentNode: parentNode };
+    }
+  }
+  return null;
+}
+
+function replaceComponentImportWithModuleImport(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appModulePath = `${
       options.appProjectRoot
@@ -269,34 +300,17 @@ function getComponentPath(options: NormalizedSchema): Rule {
       true
     );
 
-    for (const importNode of findImports(src, ImportKind.All)) {
-      const parentNode = importNode.parent;
+    const componentImportDetails = getComponentImportDetails(src, options.componentClassName);
 
-      // Disable strict-boolean-expressions for the next few lines so our &&
-      // checks can help type inference figure out if when don't have undefined.
-      // tslint:disable strict-boolean-expressions
-
-      const importClause =
-          parentNode && isImportDeclaration(parentNode) ? parentNode.importClause : undefined;
-
-      // Below, check isNamedImports to rule out the
-      // `import * as ns from "..."` case.
-      const importsSpecificNamedExports =
-          importClause &&
-          importClause.namedBindings &&
-          isNamedImports(importClause.namedBindings);
-        console.log("TCL: importsSpecificNamedExports", importsSpecificNamedExports)
-
-      if (!importsSpecificNamedExports) {
-        continue;
-      }
-
-      const namedImportsElementNameEscapedTexts = (importClause.namedBindings as ts.NamedImports)
-        .elements.map((ni) => (ni.name.escapedText));
-      console.log(importNode.text, namedImportsElementNameEscapedTexts);
-      console.log(parentNode);
+    if (componentImportDetails === null) {
+      throw new Error(`Couldn't get componentImportDetails for componentClassName ${options.componentClassName}`);
     }
 
+    const { componentPath, parentNode } = componentImportDetails;
+
+    const recorder = host.beginUpdate(appModulePath);
+    recorder.remove(parentNode.getStart(), parentNode.getEnd() - parentNode.getStart());
+    host.commitUpdate(recorder);
     // const rootNode = src;
     // const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
     // allImports.forEach((importDeclaration) => {
@@ -312,7 +326,7 @@ function getComponentPath(options: NormalizedSchema): Rule {
     //     .filter(child => {
     //       return child.kind === ts.SyntaxKind.StringLiteral})
     //     .map(n => (n as ts.StringLiteral).text);
-    //   return importFiles.filter(file => file === options.component).length === 1;
+    //   return importFiles.filter(file => file === options.componentClassName).length === 1;
     // });
 
     // console.log("TCL: relevantImports", relevantImports)
@@ -353,9 +367,9 @@ function getComponentPath(options: NormalizedSchema): Rule {
     //   const componentChange = insertImport(
     //     src,
     //     featureRoutingPath,
-    //     `${strings.capitalize(options.component)}ContainerComponent`,
-    //     `./${strings.dasherize(options.component)}-container/${strings.dasherize(
-    //       options.component
+    //     `${strings.capitalize(options.componentClassName)}ContainerComponent`,
+    //     `./${strings.dasherize(options.componentClassName)}-container/${strings.dasherize(
+    //       options.componentClassName
     //     )}-container.component`,
     //     false
     //   );
@@ -409,15 +423,15 @@ export default function (schema: Schema): Rule {
     }
 
     return chain([
-      getComponentPath(options),
+      replaceComponentImportWithModuleImport(options),
       // externalSchematic('@schematics/angular', 'module', {
       //   project: options.project,
-      //   name: `${options.component}`,
+      //   name: `${options.componentClassName}`,
       //   routing: true
       // }),
       // externalSchematic('@schematics/angular', 'component', {
       //   project: options.project,
-      //   name: `${options.component}/${options.component}-container`,
+      //   name: `${options.componentClassName}/${options.componentClassName}-container`,
       //   changeDetection: 'OnPush'
       // }),
       // addComponentToRoute(options),
