@@ -393,6 +393,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     if (targetNodeIsSingle) {
       // DO NOTHING!
+      host.commitUpdate(recorder);
       return;
     }
 
@@ -414,14 +415,13 @@ function removeComponentImportAndDeclarationsArrayEntry(
     const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
 
     if (targetNodeIsFirst) {
+      console.log('node is first');
       removeInterval.start = targetNode.getStart();
       removeInterval.end = node[targetNodeNextIndex].getStart();
     } else if (targetNodeIsLast) {
+      console.log('node is last');
       removeInterval.start = targetNode.getStart();
       removeInterval.end = declarationsParentNode.getEnd() - 1;
-    } else if (targetNodeIsSingle) {
-      removeInterval.start = targetNode.getStart();
-      removeInterval.end = targetNode.getEnd();
     } else {
       // target node is in-between
       removeInterval.start = targetNode.getStart();
