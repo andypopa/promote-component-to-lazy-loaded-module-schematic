@@ -391,12 +391,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     const targetNodeIsSingle = mapNodesEscapedTexts.length === 1;
 
-    if (targetNodeIsSingle) {
-      // DO NOTHING!
-      host.commitUpdate(recorder);
-      return;
-    }
-
     // build the interval of char indexes
     // to remove as part of removing the item
     // from the declarations array from NgModule
@@ -417,7 +411,11 @@ function removeComponentImportAndDeclarationsArrayEntry(
     const targetNodeIsLast = targetNodeIndex + 1 === mapNodesEscapedTexts.length;
     console.log("TCL: targetNodeIsLast", targetNodeIsLast)
 
-    if (targetNodeIsFirst) {
+    if (targetNodeIsSingle) {
+      console.log('node is single');
+      removeInterval.start = targetNode.getStart();
+      removeInterval.end = targetNode.getEnd();
+    } else if (targetNodeIsFirst) {
       console.log('node is first');
       removeInterval.start = targetNode.getStart();
       removeInterval.end = node[targetNodeNextIndex].getStart();
