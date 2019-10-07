@@ -4,7 +4,7 @@ import { DummyGuard } from '@martzcodes/core';
 const routes: Routes = [
   {
     path: 'asdf',
-    loadChildren: './asdf/asdf.module#AsdfModule',
+    loadChildren: () => import('./asdf/asdf.module').then(m => m.AsdfModule),
     canLoad: [DummyGuard]
   }
 ];
