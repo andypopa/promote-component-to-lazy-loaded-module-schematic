@@ -414,7 +414,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     console.log("TCL: targetNodeIsFirst", targetNodeIsFirst)
 
     const targetNodeNextIndex = targetNodeIndex + 1;
-    const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
+    const targetNodeIsLast = targetNodeIndex + 1 === mapNodesEscapedTexts.length;
     console.log("TCL: targetNodeIsLast", targetNodeIsLast)
 
     if (targetNodeIsFirst) {
