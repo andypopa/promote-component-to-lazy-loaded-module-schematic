@@ -423,7 +423,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
       removeInterval.end = node[targetNodeNextIndex].getStart();
     } else if (targetNodeIsLast) {
       console.log('node is last');
-      removeInterval.start = targetNode.getStart();
+      removeInterval.start = node[targetNodePrevIndex].getEnd();
       console.log('declarationsParentNode.getEnd()', declarationsParentNode.getEnd());
       removeInterval.end = declarationsParentNode.getEnd() - 1;
     } else {
