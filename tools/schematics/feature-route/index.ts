@@ -407,6 +407,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     };
 
     const declarationsParentNode = node[0].parent;
+    console.log('mapNodesEscapedTexts.length', mapNodesEscapedTexts.length)
 
     const targetNodePrevIndex = targetNodeIndex - 1;
     const targetNodeIsFirst = targetNodePrevIndex === -1;
