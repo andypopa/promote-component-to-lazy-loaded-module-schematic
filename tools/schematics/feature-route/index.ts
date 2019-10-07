@@ -337,8 +337,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
       parentNode.getEnd() - parentNode.getStart()
     );
 
-    recorder.
-
     const nodes = getDecoratorMetadata(src, 'NgModule', '@angular/core');
     // console.log('nodes', nodes);
     let node: any = nodes[0]; // tslint:disable-line:no-any
@@ -389,37 +387,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     // }
 
     // // now we should remove the node
-    recorder.remove(targetNode.getStart(), targetNode.getEnd() - targetNode.getStart());
-
-    const commaFixableCharInterval = {
-      start: null,
-      end: null
-    }
-    let commaIssueOccuringAtNoOfCommas = 2;
-
-    const declarationsParentNode = node[0].parent;
-
-    const targetNodePrevIndex = targetNodeIndex - 1;
-    const targetNodeIsFirst = targetNodePrevIndex === -1;
-    // if (targetNodeIsFirst) {
-    //   // skip checking before
-    //   // = set the start position to the parentNode's start position
-    //   commaFixableCharInterval.start = declarationsParentNode.getStart();
-    //   commaIssueOccuringAtNoOfCommas--;
-    // } else {
-    //   commaFixableCharInterval.start =  node[targetNodePrevIndex].getEnd();
-    // }
-
-    const targetNodeNextIndex = targetNodeIndex + 1;
-    const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
-    // if (targetNodeIsLast) {
-    //   // skip checking after
-    //   // = set the end position to the parentNode's end position
-    //   commaFixableCharInterval.end = declarationsParentNode.getEnd();
-    //   commaIssueOccuringAtNoOfCommas--;
-    // } else {
-    //   commaFixableCharInterval.end =  node[targetNodeNextIndex].getEnd();
-    // }
+    // recorder.remove(targetNode.getStart(), targetNode.getEnd() - targetNode.getStart());
 
     const targetNodeIsSingle = mapNodesEscapedTexts.length === 1;
 
@@ -428,27 +396,58 @@ function removeComponentImportAndDeclarationsArrayEntry(
       return;
     }
 
+    // build the interval of char indexes
+    // to remove as part of removing the item
+    // from the declarations array from NgModule
+
+    const removeInterval = {
+      start: null,
+      end: null
+    };
+
+    const declarationsParentNode = node[0].parent;
+
+    const targetNodePrevIndex = targetNodeIndex - 1;
+    const targetNodeIsFirst = targetNodePrevIndex === -1;
+
+    const targetNodeNextIndex = targetNodeIndex + 1;
+    const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
+
     if (targetNodeIsFirst) {
-      commaFixableCharInterval.start = declarationsParentNode.getStart();
-      commaFixableCharInterval.end = node[targetNodeNextIndex].getStart();
+      removeInterval.start = targetNode.getStart();
+      removeInterval.end = node[targetNodeNextIndex].getStart();
     } else if (targetNodeIsLast) {
-      commaFixableCharInterval.start = node[targetNodePrevIndex].getEnd();
-      commaFixableCharInterval.end = declarationParent.getEnd();
+      removeInterval.start = targetNode.getStart();
+      removeInterval.end = declarationsParentNode.getEnd() - 1;
     } else if (targetNodeIsSingle) {
+      removeInterval.start = targetNode.getStart();
+      removeInterval.end = targetNode.getEnd();
+    } else {
       // target node is in-between
+      removeInterval.start = targetNode.getStart();
+      removeInterval.end = node[targetNodeNextIndex].getStart();
     }
+
+    console.log('removeInterval', removeInterval);
 
     const srcText = src.getText();
-    let maybeCommaFixableString = '';
-
-    for (let i = commaFixableCharInterval.start; i < commaFixableCharInterval.end; i++) {
-      maybeCommaFixableString += srcText[i];
+    let stringThatWillBeRemoved = '';
+    for (let i = removeInterval.start; i < removeInterval.end; i++) {
+      stringThatWillBeRemoved += srcText[i];
     }
+    console.log('stringThatWillBeRemoved', stringThatWillBeRemoved);
 
-    console.log('maybeDoubleCommaIssueString', maybeCommaFixableString);
+    recorder.remove(removeInterval.start, removeInterval.end);
+    // let maybeCommaFixableString = '';
 
-    const hasDoubleCommaIssue = maybeCommaFixableString.split('').filter((char) => char === ',').length > 1;
-    console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
+    // for (let i = removeInterval.start; i < removeInterval.end; i++) {
+    //   maybeCommaFixableString += srcText[i];
+    // }
+
+    // console.log('maybeDoubleCommaIssueString', maybeCommaFixableString);
+
+    // const hasDoubleCommaIssue = maybeCommaFixableString.split('').filter((char) => char === ',').length > 1;
+    // console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
 
     host.commitUpdate(recorder);
