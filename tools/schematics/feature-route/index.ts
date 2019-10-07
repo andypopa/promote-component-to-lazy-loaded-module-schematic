@@ -6,12 +6,19 @@ import {
   SchematicsException,
   externalSchematic
 } from '@angular-devkit/schematics';
+
 import {
   findImports,
   ImportKind,
   isImportDeclaration,
   isNamedImports,
-} from "tsutils";
+} from 'tsutils';
+
+import {
+  getDecoratorMetadata,
+  getMetadataField
+} from '@schematics/angular/utility/ast-utils';
+
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
 import Schema from './schema';
 import { strings } from '@angular-devkit/core';
@@ -284,7 +291,7 @@ function getComponentImportDetails(src, componentClassName) {
   return null;
 }
 
-function replaceComponentImportWithModuleImport(options: NormalizedSchema): Rule {
+function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appModulePath = `${
       options.appProjectRoot
@@ -310,7 +317,26 @@ function replaceComponentImportWithModuleImport(options: NormalizedSchema): Rule
 
     const recorder = host.beginUpdate(appModulePath);
     recorder.remove(parentNode.getStart(), parentNode.getEnd() - parentNode.getStart());
-    host.commitUpdate(recorder);
+
+    const nodes = getDecoratorMetadata(source, 'NgModule', '@angular/core');
+    let node: any = nodes[0];  // tslint:disable-line:no-any
+  
+    // Find the decorator declaration.
+    if (!node) {
+      throw new Error(`Couldn't find NgModule decorator!`);
+    }
+  
+    // Get all the children property assignment of object literals.
+    const matchingProperties = getMetadataField(
+      node as ts.ObjectLiteralExpression,
+      metadataField,
+    );
+
+    // host.commitUpdate(recorder);
+
+
+
+
     // const rootNode = src;
     // const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
     // allImports.forEach((importDeclaration) => {
@@ -423,7 +449,7 @@ export default function (schema: Schema): Rule {
     }
 
     return chain([
-      replaceComponentImportWithModuleImport(options),
+      removeComponentImportAndDeclarationsArrayEntry(options),
       // externalSchematic('@schematics/angular', 'module', {
       //   project: options.project,
       //   name: `${options.componentClassName}`,
