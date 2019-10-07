@@ -13,7 +13,7 @@
       "type": "string",
       "description": "Component class name",
       "x-prompt": "Which component (class name i.e. MyNewComponent)?",
-      "default": "BrowserModule"
+      "default": "MapComponent"
     }
   },
   "required": ["project", "componentClassName"]

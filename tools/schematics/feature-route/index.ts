@@ -11,7 +11,7 @@ import {
   findImports,
   ImportKind,
   isImportDeclaration,
-  isNamedImports,
+  isNamedImports
 } from 'tsutils';
 
 import {
@@ -31,16 +31,16 @@ import {
 } from '@nrwl/workspace/src/utils/ast-utils';
 
 function isWebComponent(element) {
-  return element.tagName.includes("-");
+  return element.tagName.includes('-');
 }
 
 function addComponentToRoute(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const featureRoutingPath = `${
       options.appProjectRoot
-      }/src/app/${strings.dasherize(options.componentClassName)}/${strings.dasherize(
-        options.componentClassName
-      )}-routing.module.ts`;
+    }/src/app/${strings.dasherize(
+      options.componentClassName
+    )}/${strings.dasherize(options.componentClassName)}-routing.module.ts`;
 
     // tslint:disable-next-line
     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
@@ -55,7 +55,9 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
     const route = `{
       path: '',
       pathMatch: 'full',
-      component: ${strings.capitalize(options.componentClassName)}ContainerComponent
+      component: ${strings.capitalize(
+        options.componentClassName
+      )}ContainerComponent
     }`;
 
     const nodes = getSourceNodes(src);
@@ -103,7 +105,9 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
         src,
         featureRoutingPath,
         `${strings.capitalize(options.componentClassName)}ContainerComponent`,
-        `./${strings.dasherize(options.componentClassName)}-container/${strings.dasherize(
+        `./${strings.dasherize(
+          options.componentClassName
+        )}-container/${strings.dasherize(
           options.componentClassName
         )}-container.component`,
         false
@@ -125,7 +129,7 @@ function addRouteToApp(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appRoutingPath = `${
       options.appProjectRoot
-      }/src/app/app-routing.module.ts`;
+    }/src/app/app-routing.module.ts`;
 
     // tslint:disable-next-line
     const appRouting = host.read(appRoutingPath)!.toString('utf-8');
@@ -140,10 +144,10 @@ function addRouteToApp(options: NormalizedSchema): Rule {
     const route = `{
       path: '${options.componentClassName}',
       loadChildren: './${strings.dasherize(
+        options.componentClassName
+      )}/${strings.dasherize(
       options.componentClassName
-    )}/${strings.dasherize(options.componentClassName)}.module#${strings.capitalize(
-      options.componentClassName
-    )}Module'
+    )}.module#${strings.capitalize(options.componentClassName)}Module'
     }`;
 
     const nodes = getSourceNodes(src);
@@ -268,34 +272,39 @@ function getComponentImportDetails(src, componentClassName) {
     // checks can help type inference figure out if when don't have undefined.
     // tslint:disable strict-boolean-expressions
     const importClause =
-        parentNode && isImportDeclaration(parentNode) ? parentNode.importClause : undefined;
+      parentNode && isImportDeclaration(parentNode)
+        ? parentNode.importClause
+        : undefined;
 
     // Below, check isNamedImports to rule out the
     // `import * as ns from "..."` case.
     const importsSpecificNamedExports =
-        importClause &&
-        importClause.namedBindings &&
-        isNamedImports(importClause.namedBindings);
+      importClause &&
+      importClause.namedBindings &&
+      isNamedImports(importClause.namedBindings);
 
     if (!importsSpecificNamedExports) {
       continue;
     }
 
-    const namedImportsElementNameEscapedTexts = (importClause.namedBindings as ts.NamedImports)
-      .elements.map((ni) => String(ni.name.escapedText));
+    const namedImportsElementNameEscapedTexts = (importClause.namedBindings as ts.NamedImports).elements.map(
+      ni => String(ni.name.escapedText)
+    );
 
-    if (namedImportsElementNameEscapedTexts.indexOf(componentClassName) !== -1) {
+    if (
+      namedImportsElementNameEscapedTexts.indexOf(componentClassName) !== -1
+    ) {
       return { componentPath: importNode.text, parentNode: parentNode };
     }
   }
   return null;
 }
 
-function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchema): Rule {
+function removeComponentImportAndDeclarationsArrayEntry(
+  options: NormalizedSchema
+): Rule {
   return (host: Tree) => {
-    const appModulePath = `${
-      options.appProjectRoot
-      }/src/app/app.module.ts`;
+    const appModulePath = `${options.appProjectRoot}/src/app/app.module.ts`;
 
     // tslint:disable-next-line
     const appModule = host.read(appModulePath)!.toString('utf-8');
@@ -307,35 +316,142 @@ function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchem
       true
     );
 
-    const componentImportDetails = getComponentImportDetails(src, options.componentClassName);
+    const componentImportDetails = getComponentImportDetails(
+      src,
+      options.componentClassName
+    );
 
     if (componentImportDetails === null) {
-      throw new Error(`Couldn't get componentImportDetails for componentClassName ${options.componentClassName}`);
+      throw new Error(
+        `Couldn't get componentImportDetails for componentClassName ${
+          options.componentClassName
+        }`
+      );
     }
 
     const { componentPath, parentNode } = componentImportDetails;
 
     const recorder = host.beginUpdate(appModulePath);
-    recorder.remove(parentNode.getStart(), parentNode.getEnd() - parentNode.getStart());
+    recorder.remove(
+      parentNode.getStart(),
+      parentNode.getEnd() - parentNode.getStart()
+    );
 
-    const nodes = getDecoratorMetadata(source, 'NgModule', '@angular/core');
-    let node: any = nodes[0];  // tslint:disable-line:no-any
-  
+    recorder.
+
+    const nodes = getDecoratorMetadata(src, 'NgModule', '@angular/core');
+    // console.log('nodes', nodes);
+    let node: any = nodes[0]; // tslint:disable-line:no-any
+    // console.log(node.properties);
     // Find the decorator declaration.
     if (!node) {
       throw new Error(`Couldn't find NgModule decorator!`);
     }
-  
+
     // Get all the children property assignment of object literals.
     const matchingProperties = getMetadataField(
       node as ts.ObjectLiteralExpression,
-      metadataField,
+      'declarations'
     );
 
-    // host.commitUpdate(recorder);
+    console.log(matchingProperties);
+
+    const assignment = matchingProperties[0] as ts.PropertyAssignment;
+
+    // If it's not an array, nothing we can do really.
+    if (assignment.initializer.kind !== ts.SyntaxKind.ArrayLiteralExpression) {
+      throw new Error(`Malformed NgModule. 'declarations' is not an array.`);
+    }
+
+    const arrLiteral = assignment.initializer as ts.ArrayLiteralExpression;
+    if (arrLiteral.elements.length === 0) {
+      // Forward the property.
+      console.log('forwarding property');
+      node = arrLiteral;
+    } else {
+      console.log('replacing node with elements');
+      node = arrLiteral.elements;
+    }
+
+    const mapNodesEscapedTexts = node.map((n) => n.escapedText);
+    const targetNodeIndex = mapNodesEscapedTexts.indexOf(options.componentClassName);
+    const targetNode = node[targetNodeIndex];
+    const isTargetNodeLast = targetNodeIndex === mapNodesEscapedTexts.length - 1;
+
+    console.log('node', node);
+    console.log('mapNodesEscapedTexts', mapNodesEscapedTexts);
+    console.log('indexOfTargetNode', targetNodeIndex);
+    // console.log('isTargetNodeLast', isTargetNodeLast);
+    
+    // if (!isTargetNodeLast) {
+    //   // remove trailing comma
+    //   console.log('the parent node start and end positions', declarationsParentNode.getStart(), declarationsParentNode.getEnd());
+    // }
+
+    // // now we should remove the node
+    recorder.remove(targetNode.getStart(), targetNode.getEnd() - targetNode.getStart());
+
+    const commaFixableCharInterval = {
+      start: null,
+      end: null
+    }
+    let commaIssueOccuringAtNoOfCommas = 2;
+
+    const declarationsParentNode = node[0].parent;
+
+    const targetNodePrevIndex = targetNodeIndex - 1;
+    const targetNodeIsFirst = targetNodePrevIndex === -1;
+    // if (targetNodeIsFirst) {
+    //   // skip checking before
+    //   // = set the start position to the parentNode's start position
+    //   commaFixableCharInterval.start = declarationsParentNode.getStart();
+    //   commaIssueOccuringAtNoOfCommas--;
+    // } else {
+    //   commaFixableCharInterval.start =  node[targetNodePrevIndex].getEnd();
+    // }
+
+    const targetNodeNextIndex = targetNodeIndex + 1;
+    const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
+    // if (targetNodeIsLast) {
+    //   // skip checking after
+    //   // = set the end position to the parentNode's end position
+    //   commaFixableCharInterval.end = declarationsParentNode.getEnd();
+    //   commaIssueOccuringAtNoOfCommas--;
+    // } else {
+    //   commaFixableCharInterval.end =  node[targetNodeNextIndex].getEnd();
+    // }
+
+    const targetNodeIsSingle = mapNodesEscapedTexts.length === 1;
+
+    if (targetNodeIsSingle) {
+      // DO NOTHING!
+      return;
+    }
+
+    if (targetNodeIsFirst) {
+      commaFixableCharInterval.start = declarationsParentNode.getStart();
+      commaFixableCharInterval.end = node[targetNodeNextIndex].getStart();
+    } else if (targetNodeIsLast) {
+      commaFixableCharInterval.start = node[targetNodePrevIndex].getEnd();
+      commaFixableCharInterval.end = declarationParent.getEnd();
+    } else if (targetNodeIsSingle) {
+      // target node is in-between
+    }
+
+    const srcText = src.getText();
+    let maybeCommaFixableString = '';
+
+    for (let i = commaFixableCharInterval.start; i < commaFixableCharInterval.end; i++) {
+      maybeCommaFixableString += srcText[i];
+    }
+
+    console.log('maybeDoubleCommaIssueString', maybeCommaFixableString);
+
+    const hasDoubleCommaIssue = maybeCommaFixableString.split('').filter((char) => char === ',').length > 1;
+    console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
 
-
+    host.commitUpdate(recorder);
 
     // const rootNode = src;
     // const allImports = findNodes(rootNode, ts.SyntaxKind.ImportDeclaration);
@@ -356,7 +472,6 @@ function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchem
     // });
 
     // console.log("TCL: relevantImports", relevantImports)
-
 
     // const nodes = getSourceNodes(src);
     // const routeNodes = nodes
@@ -386,7 +501,6 @@ function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchem
     //   const pos = navigation.getStart() + 1;
     //   const fullText = navigation.getFullText();
 
-
     //   const recorder = host.beginUpdate(featureRoutingPath);
     //   recorder.insertRight(pos, toInsert);
 
@@ -408,7 +522,7 @@ function removeComponentImportAndDeclarationsArrayEntry(options: NormalizedSchem
 
     //   host.commitUpdate(recorder);
     return host;
-  }
+  };
   // };
 }
 
@@ -437,7 +551,7 @@ function normalizeOptions(host: Tree, options: Schema): NormalizedSchema {
   };
 }
 
-export default function (schema: Schema): Rule {
+export default function(schema: Schema): Rule {
   return (host: Tree, context: SchematicContext) => {
     const options = normalizeOptions(host, schema);
 
@@ -449,7 +563,7 @@ export default function (schema: Schema): Rule {
     }
 
     return chain([
-      removeComponentImportAndDeclarationsArrayEntry(options),
+      removeComponentImportAndDeclarationsArrayEntry(options)
       // externalSchematic('@schematics/angular', 'module', {
       //   project: options.project,
       //   name: `${options.componentClassName}`,
