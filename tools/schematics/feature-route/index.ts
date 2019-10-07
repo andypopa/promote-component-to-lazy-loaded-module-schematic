@@ -410,9 +410,11 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     const targetNodePrevIndex = targetNodeIndex - 1;
     const targetNodeIsFirst = targetNodePrevIndex === -1;
+    console.log("TCL: targetNodeIsFirst", targetNodeIsFirst)
 
     const targetNodeNextIndex = targetNodeIndex + 1;
     const targetNodeIsLast = targetNodeIndex === mapNodesEscapedTexts.length;
+    console.log("TCL: targetNodeIsLast", targetNodeIsLast)
 
     if (targetNodeIsFirst) {
       console.log('node is first');
@@ -424,6 +426,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
       removeInterval.end = declarationsParentNode.getEnd() - 1;
     } else {
       // target node is in-between
+      console.log('node is in-between');
       removeInterval.start = targetNode.getStart();
       removeInterval.end = node[targetNodeNextIndex].getStart();
     }
