@@ -441,8 +441,9 @@ function removeComponentImportAndDeclarationsArrayEntry(
       stringThatWillBeRemoved += srcText[i];
     }
     console.log('stringThatWillBeRemoved', stringThatWillBeRemoved);
+    const removeIntervalLength = removeInterval.end - removeInterval.start;
 
-    recorder.remove(removeInterval.start, removeInterval.end);
+    recorder.remove(removeInterval.start, removeIntervalLength);
     // let maybeCommaFixableString = '';
 
     // for (let i = removeInterval.start; i < removeInterval.end; i++) {
