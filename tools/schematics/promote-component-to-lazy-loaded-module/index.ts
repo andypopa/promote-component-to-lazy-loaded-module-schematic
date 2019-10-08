@@ -566,6 +566,11 @@ export default function(schema: Schema): Rule {
     }
 
     return chain([
+      externalSchematic('@schematics/angular', 'module', {
+        project: options.project,
+        name: `${options.componentClassName.replace('Component', '')}`,
+        routing: true
+      }),
       removeComponentImportAndDeclarationsArrayEntry(options)
       // externalSchematic('@schematics/angular', 'module', {
       //   project: options.project,
