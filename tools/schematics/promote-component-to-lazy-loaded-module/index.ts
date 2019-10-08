@@ -453,7 +453,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     // const hasDoubleCommaIssue = maybeCommaFixableString.split('').filter((char) => char === ',').length > 1;
     // console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
-
+    console.log('!!!HOST', host);
     host.commitUpdate(recorder);
 
     // const rootNode = src;
