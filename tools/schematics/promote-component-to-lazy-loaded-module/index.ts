@@ -5,7 +5,7 @@ import {
   SchematicContext,
   Tree,
   SchematicsException,
-  externalSchematic,
+  externalSchematic
 } from '@angular-devkit/schematics';
 
 import {
@@ -43,7 +43,6 @@ function getModuleName(componentClassName) {
 
 function getNewModulePath(componentClassName) {
   const moduleName = getModuleName(componentClassName);
-
 }
 
 function isWebComponent(element) {
@@ -138,6 +137,127 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
       host.commitUpdate(recorder);
       return host;
     }
+  };
+}
+
+function getComponentRoutes(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const appRoutingPath = `${
+      options.appProjectRoot
+    }/src/app/app-routing.module.ts`;
+
+    // tslint:disable-next-line
+    const appRouting = host.read(appRoutingPath)!.toString('utf-8');
+
+    const src = ts.createSourceFile(
+      'app-routing.module.ts',
+      appRouting,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    // const route = `{
+    //   path: '${options.componentClassName}',
+    //   loadChildren: './${strings.dasherize(
+    //     options.componentClassName
+    //   )}/${strings.dasherize(
+    //   options.componentClassName
+    // )}.module#${strings.capitalize(options.componentClassName)}Module'
+    // }`;
+
+    const nodes = getSourceNodes(src);
+    const routeNodes = nodes
+      .filter((n: ts.Node) => {
+        if (n.kind === ts.SyntaxKind.VariableDeclaration) {
+          if (
+            n.getChildren().findIndex(c => {
+              return (
+                c.kind === ts.SyntaxKind.Identifier && c.getText() === 'routes'
+              );
+            }) !== -1
+          ) {
+            return true;
+          }
+        }
+        return false;
+      })
+      .map((n: ts.Node) => {
+        const arrNodes = n
+          .getChildren()
+          .filter(c => c.kind === ts.SyntaxKind.ArrayLiteralExpression);
+        return arrNodes[arrNodes.length - 1];
+      });
+
+    // const routeArr = routeNodes[0].getChildren().filter(c => c.kind === ts.SyntaxKind.SyntaxList)[0];
+    const appRoutes: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+
+    // console.log('!!! appRoutes', appRoutes);
+
+    const nonLazyLoadedAppRoutes = appRoutes.elements.filter(appRoute => {
+      return (appRoute as ts.ObjectLiteralExpression).properties.some(
+        p => p.name.getText() === 'component'
+      );
+    });
+
+    // nonLazyLoadedAppRoutes.forEach((e, idx) => {
+    //   console.log(`e.getText() ${idx}: ${e.getText()}`)
+    // })
+
+    const componentRoutes = nonLazyLoadedAppRoutes.filter(appRoute => {
+      const componentComponentProperty = (appRoute as ts.ObjectLiteralExpression).properties.filter(
+        p => {
+          const isComponentProperty = p.name.getText() === 'component';
+          if (!isComponentProperty) return false;
+
+          console.log("TCL: isComponentProperty", isComponentProperty);
+          const componentPropertyValue = (p as ts.PropertyAssignment).initializer.getText();
+          console.log("TCL: componentPropertyValue", componentPropertyValue);
+          const isComponentPropertyValueComponentClassName = componentPropertyValue === options.componentClassName;
+          console.log("TCL: componentPropertyValueIsComponentClassName", isComponentPropertyValueComponentClassName);
+
+          return isComponentProperty && isComponentPropertyValueComponentClassName;
+      })[0];
+
+      if (typeof componentComponentProperty !== 'undefined') {
+        console.log(
+          'componentComponentProperty.getText()',
+          componentComponentProperty.getText()
+        );
+        return true;
+      }
+
+      console.log('componentComponentProperty is undefined!');
+
+      return false;
+    });
+
+    // filter the only the ones that have component
+
+    // console.log('!!! routeArr.getText()', routeArr.getText());
+    // console.log('!!! routeArr', routeArr);
+    // console.log('!!! routeNodes', routeNodes.map(rn => rn.getChildren().filter(c => c.kind === ts.SyntaxKind.ObjectLiteralExpression).map((jn) => jn.getText())));
+
+    // if (routeNodes.length === 1) {
+    //   const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+    //   const pos = navigation.getStart() + 1;
+    //   const fullText = navigation.getFullText();
+    //   let toInsert = '';
+    //   if (navigation.elements.length > 0) {
+    //     if (fullText.match(/\r\n/)) {
+    //       toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${route},`;
+    //     } else {
+    //       toInsert = `${route},`;
+    //     }
+    //   } else {
+    //     toInsert = `${route}`;
+    //   }
+
+    // const recorder = host.beginUpdate(appRoutingPath);
+    // recorder.insertRight(pos, toInsert);
+
+    // host.commitUpdate(recorder);
+
+    return host;
   };
 }
 
@@ -348,7 +468,10 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     const { componentRelativePath, parentNode } = componentImportDetails;
     const componentParentDirectory = path.dirname(componentRelativePath);
-    const componentParentDirectoryPath = path.join(appSourcePath, componentParentDirectory);
+    const componentParentDirectoryPath = path.join(
+      appSourcePath,
+      componentParentDirectory
+    );
 
     const recorder = host.beginUpdate(appModulePath);
     recorder.remove(
@@ -357,9 +480,8 @@ function removeComponentImportAndDeclarationsArrayEntry(
     );
 
     const nodes = getDecoratorMetadata(src, 'NgModule', '@angular/core');
-    // console.log('nodes', nodes);
     let node: any = nodes[0]; // tslint:disable-line:no-any
-    // console.log(node.properties);
+
     // Find the decorator declaration.
     if (!node) {
       throw new Error(`Couldn't find NgModule decorator!`);
@@ -371,8 +493,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
       'declarations'
     );
 
-    console.log(matchingProperties);
-
     const assignment = matchingProperties[0] as ts.PropertyAssignment;
 
     // If it's not an array, nothing we can do really.
@@ -383,51 +503,42 @@ function removeComponentImportAndDeclarationsArrayEntry(
     const arrLiteral = assignment.initializer as ts.ArrayLiteralExpression;
     if (arrLiteral.elements.length === 0) {
       // Forward the property.
-      console.log('forwarding property');
       node = arrLiteral;
     } else {
-      console.log('replacing node with elements');
       node = arrLiteral.elements;
     }
 
-    const mapNodesEscapedTexts = node.map((n) => n.escapedText);
-    const targetNodeIndex = mapNodesEscapedTexts.indexOf(options.componentClassName);
+    const mapNodesEscapedTexts = node.map(n => n.escapedText);
+    const targetNodeIndex = mapNodesEscapedTexts.indexOf(
+      options.componentClassName
+    );
     const targetNode = node[targetNodeIndex];
 
     console.log('node', node);
     console.log('mapNodesEscapedTexts', mapNodesEscapedTexts);
     console.log('indexOfTargetNode', targetNodeIndex);
-    // console.log('isTargetNodeLast', isTargetNodeLast);
-    
-    // if (!isTargetNodeLast) {
-    //   // remove trailing comma
-    //   console.log('the parent node start and end positions', declarationsParentNode.getStart(), declarationsParentNode.getEnd());
-    // }
-
-    // // now we should remove the node
-    // recorder.remove(targetNode.getStart(), targetNode.getEnd() - targetNode.getStart());
 
     const targetNodeIsSingle = mapNodesEscapedTexts.length === 1;
 
     // build the interval of char indexes
     // to remove as part of removing the item
     // from the declarations array from NgModule
-
     const removeInterval = {
       start: null,
       end: null
     };
 
     const declarationsParentNode = node[0].parent;
-    console.log('mapNodesEscapedTexts.length', mapNodesEscapedTexts.length)
+    console.log('mapNodesEscapedTexts.length', mapNodesEscapedTexts.length);
 
     const targetNodePrevIndex = targetNodeIndex - 1;
     const targetNodeIsFirst = targetNodePrevIndex === -1;
-    console.log("TCL: targetNodeIsFirst", targetNodeIsFirst)
+    console.log('TCL: targetNodeIsFirst', targetNodeIsFirst);
 
     const targetNodeNextIndex = targetNodeIndex + 1;
-    const targetNodeIsLast = targetNodeIndex + 1 === mapNodesEscapedTexts.length;
-    console.log("TCL: targetNodeIsLast", targetNodeIsLast)
+    const targetNodeIsLast =
+      targetNodeIndex + 1 === mapNodesEscapedTexts.length;
+    console.log('TCL: targetNodeIsLast', targetNodeIsLast);
 
     if (targetNodeIsSingle) {
       console.log('node is single');
@@ -440,7 +551,10 @@ function removeComponentImportAndDeclarationsArrayEntry(
     } else if (targetNodeIsLast) {
       console.log('node is last');
       removeInterval.start = node[targetNodePrevIndex].getEnd();
-      console.log('declarationsParentNode.getEnd()', declarationsParentNode.getEnd());
+      console.log(
+        'declarationsParentNode.getEnd()',
+        declarationsParentNode.getEnd()
+      );
       removeInterval.end = declarationsParentNode.getEnd() - 1;
     } else {
       // target node is in-between
@@ -471,7 +585,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
     // const hasDoubleCommaIssue = maybeCommaFixableString.split('').filter((char) => char === ',').length > 1;
     // console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
-    console.log('!!!HOST', host);
     host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
     console.log('componentParentDirectoryPath', componentParentDirectoryPath);
     const componentDirEntry = host.getDir(componentParentDirectoryPath);
@@ -597,21 +710,10 @@ export default function(schema: Schema): Rule {
         name: `${getFeatureName(options.componentClassName)}`,
         routing: true
       }),
+      getComponentRoutes(options),
       move('apps/qwerty/src/app/x', 'apps/qwerty/src/app/y'),
-      removeComponentImportAndDeclarationsArrayEntry(options)
-      // externalSchematic('@schematics/angular', 'module', {
-      //   project: options.project,
-      //   name: `${options.componentClassName}`,
-      //   routing: true
-      // }),
-      // externalSchematic('@schematics/angular', 'component', {
-      //   project: options.project,
-      //   name: `${options.componentClassName}/${options.componentClassName}-container`,
-      //   changeDetection: 'OnPush'
-      // }),
-      // addComponentToRoute(options),
-      // addRouteToApp(options),
-      // addNavigation(options)
+      removeComponentImportAndDeclarationsArrayEntry(options),
+      getComponentRoutes(options)
     ]);
   };
 }
