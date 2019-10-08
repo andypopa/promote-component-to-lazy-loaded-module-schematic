@@ -1,10 +1,11 @@
 import {
   chain,
+  move,
   Rule,
   SchematicContext,
   Tree,
   SchematicsException,
-  externalSchematic
+  externalSchematic,
 } from '@angular-devkit/schematics';
 
 import {
@@ -31,6 +32,19 @@ import {
 } from '@nrwl/workspace/src/utils/ast-utils';
 
 import * as path from 'path';
+
+function getFeatureName(componentClassName) {
+  return componentClassName.replace('Component', '');
+}
+
+function getModuleName(componentClassName) {
+  return getFeatureName(componentClassName) + 'Module';
+}
+
+function getNewModulePath(componentClassName) {
+  const moduleName = getModuleName(componentClassName);
+
+}
 
 function isWebComponent(element) {
   return element.tagName.includes('-');
@@ -461,10 +475,11 @@ function removeComponentImportAndDeclarationsArrayEntry(
     host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
     console.log('componentParentDirectoryPath', componentParentDirectoryPath);
     const componentDirEntry = host.getDir(componentParentDirectoryPath);
-    componentDirEntry.subfiles.forEach((subfile) => {
-      const subfilePath = path.join(componentParentDirectoryPath, subfile);
-      host.delete(subfilePath);
-    });
+    // const newModulePath = ;
+    // componentDirEntry.subfiles.forEach((subfile) => {
+    //   const subfilePath = path.join(componentParentDirectoryPath, subfile);
+    //   host.delete(subfilePath);
+    // });
     host.commitUpdate(recorder);
 
     // const rootNode = src;
@@ -579,9 +594,10 @@ export default function(schema: Schema): Rule {
     return chain([
       externalSchematic('@schematics/angular', 'module', {
         project: options.project,
-        name: `${options.componentClassName.replace('Component', '')}`,
+        name: `${getFeatureName(options.componentClassName)}`,
         routing: true
       }),
+      move('apps/qwerty/src/app/x', 'apps/qwerty/src/app/y'),
       removeComponentImportAndDeclarationsArrayEntry(options)
       // externalSchematic('@schematics/angular', 'module', {
       //   project: options.project,
