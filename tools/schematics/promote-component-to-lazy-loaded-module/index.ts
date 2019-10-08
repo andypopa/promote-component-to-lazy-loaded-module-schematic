@@ -374,7 +374,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
     const mapNodesEscapedTexts = node.map((n) => n.escapedText);
     const targetNodeIndex = mapNodesEscapedTexts.indexOf(options.componentClassName);
     const targetNode = node[targetNodeIndex];
-    const isTargetNodeLast = targetNodeIndex === mapNodesEscapedTexts.length - 1;
 
     console.log('node', node);
     console.log('mapNodesEscapedTexts', mapNodesEscapedTexts);
@@ -454,6 +453,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     // console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
     console.log('!!!HOST', host);
+    host.delete(componentPath);
     host.commitUpdate(recorder);
 
     // const rootNode = src;
