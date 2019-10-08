@@ -140,7 +140,7 @@ function addComponentToRoute(options: NormalizedSchema): Rule {
   };
 }
 
-function getComponentRoutes(options: NormalizedSchema): Rule {
+function moveComponentRoutes(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appRoutingPath = `${
       options.appProjectRoot
@@ -149,24 +149,15 @@ function getComponentRoutes(options: NormalizedSchema): Rule {
     // tslint:disable-next-line
     const appRouting = host.read(appRoutingPath)!.toString('utf-8');
 
-    const src = ts.createSourceFile(
+    const appRoutingSrc = ts.createSourceFile(
       'app-routing.module.ts',
       appRouting,
       ts.ScriptTarget.Latest,
       true
     );
 
-    // const route = `{
-    //   path: '${options.componentClassName}',
-    //   loadChildren: './${strings.dasherize(
-    //     options.componentClassName
-    //   )}/${strings.dasherize(
-    //   options.componentClassName
-    // )}.module#${strings.capitalize(options.componentClassName)}Module'
-    // }`;
-
-    const nodes = getSourceNodes(src);
-    const routeNodes = nodes
+    const appRoutingNodes = getSourceNodes(appRoutingSrc);
+    const appRoutingRouteNodes = appRoutingNodes
       .filter((n: ts.Node) => {
         if (n.kind === ts.SyntaxKind.VariableDeclaration) {
           if (
@@ -188,71 +179,37 @@ function getComponentRoutes(options: NormalizedSchema): Rule {
         return arrNodes[arrNodes.length - 1];
       });
 
-    // const routeArr = routeNodes[0].getChildren().filter(c => c.kind === ts.SyntaxKind.SyntaxList)[0];
-    const appRoutes: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+    const appRoutes: ts.ArrayLiteralExpression = appRoutingRouteNodes[0] as ts.ArrayLiteralExpression;
 
-    // console.log('!!! appRoutes', appRoutes);
-
-    const nonLazyLoadedAppRoutes = appRoutes.elements.filter(appRoute => {
+    const appRoutingNonLazyLoadedAppRoutes = appRoutes.elements.filter(appRoute => {
       return (appRoute as ts.ObjectLiteralExpression).properties.some(
         p => p.name.getText() === 'component'
       );
     });
 
-    // nonLazyLoadedAppRoutes.forEach((e, idx) => {
-    //   console.log(`e.getText() ${idx}: ${e.getText()}`)
-    // })
-
-    const componentRoutes = nonLazyLoadedAppRoutes.filter(appRoute => {
-      const componentComponentProperty = (appRoute as ts.ObjectLiteralExpression).properties.filter(
+    const appRoutingComponentRoutes = appRoutingNonLazyLoadedAppRoutes.filter(appRoute => {
+      const maybeRouteComponentPropertyWithSchematicComponent = (appRoute as ts.ObjectLiteralExpression).properties.filter(
         p => {
           const isComponentProperty = p.name.getText() === 'component';
           if (!isComponentProperty) return false;
 
-          console.log("TCL: isComponentProperty", isComponentProperty);
           const componentPropertyValue = (p as ts.PropertyAssignment).initializer.getText();
-          console.log("TCL: componentPropertyValue", componentPropertyValue);
           const isComponentPropertyValueComponentClassName = componentPropertyValue === options.componentClassName;
-          console.log("TCL: componentPropertyValueIsComponentClassName", isComponentPropertyValueComponentClassName);
 
           return isComponentProperty && isComponentPropertyValueComponentClassName;
       })[0];
 
-      if (typeof componentComponentProperty !== 'undefined') {
-        console.log(
-          'componentComponentProperty.getText()',
-          componentComponentProperty.getText()
-        );
-        return true;
-      }
-
-      console.log('componentComponentProperty is undefined!');
-
-      return false;
+      return typeof maybeRouteComponentPropertyWithSchematicComponent !== 'undefined';
     });
 
-    // filter the only the ones that have component
 
-    // console.log('!!! routeArr.getText()', routeArr.getText());
-    // console.log('!!! routeArr', routeArr);
-    // console.log('!!! routeNodes', routeNodes.map(rn => rn.getChildren().filter(c => c.kind === ts.SyntaxKind.ObjectLiteralExpression).map((jn) => jn.getText())));
+    const appRoutingComponentRoutesText = appRoutingComponentRoutes.map((cr) => cr.getText());
+    const appRoutingRecorder = host.beginUpdate(appRoutingPath);
 
-    // if (routeNodes.length === 1) {
-    //   const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
-    //   const pos = navigation.getStart() + 1;
-    //   const fullText = navigation.getFullText();
-    //   let toInsert = '';
-    //   if (navigation.elements.length > 0) {
-    //     if (fullText.match(/\r\n/)) {
-    //       toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${route},`;
-    //     } else {
-    //       toInsert = `${route},`;
-    //     }
-    //   } else {
-    //     toInsert = `${route}`;
-    //   }
-
-    // const recorder = host.beginUpdate(appRoutingPath);
+    appRoutingComponentRoutes.forEach((appRoutingComponentRoute) => {
+      appRoutingRecorder.remove()
+    })
+    // const featureRoutingRecorder = host.beginUpdate(appRoutingPath);
     // recorder.insertRight(pos, toInsert);
 
     // host.commitUpdate(recorder);
