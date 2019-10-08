@@ -30,6 +30,8 @@ import {
   findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
 
+import * as path from 'path';
+
 function isWebComponent(element) {
   return element.tagName.includes('-');
 }
@@ -294,7 +296,7 @@ function getComponentImportDetails(src, componentClassName) {
     if (
       namedImportsElementNameEscapedTexts.indexOf(componentClassName) !== -1
     ) {
-      return { componentPath: importNode.text, parentNode: parentNode };
+      return { componentRelativePath: importNode.text, parentNode: parentNode };
     }
   }
   return null;
@@ -304,7 +306,8 @@ function removeComponentImportAndDeclarationsArrayEntry(
   options: NormalizedSchema
 ): Rule {
   return (host: Tree) => {
-    const appModulePath = `${options.appProjectRoot}/src/app/app.module.ts`;
+    const appSourcePath = `${options.appProjectRoot}/src/app`;
+    const appModulePath = path.join(appSourcePath, `app.module.ts`);
 
     // tslint:disable-next-line
     const appModule = host.read(appModulePath)!.toString('utf-8');
@@ -329,7 +332,9 @@ function removeComponentImportAndDeclarationsArrayEntry(
       );
     }
 
-    const { componentPath, parentNode } = componentImportDetails;
+    const { componentRelativePath, parentNode } = componentImportDetails;
+    const componentParentDirectory = path.dirname(componentRelativePath);
+    const componentParentDirectoryPath = path.join(appSourcePath, componentParentDirectory);
 
     const recorder = host.beginUpdate(appModulePath);
     recorder.remove(
@@ -453,7 +458,13 @@ function removeComponentImportAndDeclarationsArrayEntry(
     // console.log('hasDoubleCommaIssue', hasDoubleCommaIssue);
 
     console.log('!!!HOST', host);
-    host.delete(componentPath);
+    host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
+    console.log('componentParentDirectoryPath', componentParentDirectoryPath);
+    const componentDirEntry = host.getDir(componentParentDirectoryPath);
+    componentDirEntry.subfiles.forEach((subfile) => {
+      const subfilePath = path.join(componentParentDirectoryPath, subfile);
+      host.delete(subfilePath);
+    });
     host.commitUpdate(recorder);
 
     // const rootNode = src;
