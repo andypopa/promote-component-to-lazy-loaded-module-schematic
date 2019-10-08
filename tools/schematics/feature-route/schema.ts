@@ -1,4 +1,6 @@
 export default interface Schema {
   project: string;
-  componentClassName: string;
+  feature: string;
+  dummy: string;
+  navigation: boolean;
 }

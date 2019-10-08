@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "id": "feature-route",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Project name",
+      "x-prompt": "Which project?",
+      "default": "qwerty"
+    },
+    "componentClassName": {
+      "type": "string",
+      "description": "Component class name",
+      "x-prompt": "Which component (class name i.e. MyNewComponent)?",
+      "default": "MapComponent"
+    }
+  },
+  "required": ["project", "componentClassName"]
+}

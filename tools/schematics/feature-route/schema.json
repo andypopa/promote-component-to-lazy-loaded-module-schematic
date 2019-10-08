@@ -6,15 +6,25 @@
     "project": {
       "type": "string",
       "description": "Project name",
-      "x-prompt": "Which project?",
-      "default": "qwerty"
+      "x-prompt": "Which project?"
     },
-    "componentClassName": {
+    "feature": {
       "type": "string",
-      "description": "Component class name",
-      "x-prompt": "Which component (class name i.e. MyNewComponent)?",
-      "default": "MapComponent"
+      "description": "Feature name",
+      "x-prompt": "What's the feature route?"
+    },
+    "dummy": {
+      "type": "boolean",
+      "description": "Dummy Guard",
+      "default": true,
+      "x-prompt": "Should the route use the Dummy Guard?"
+    },
+    "navigation": {
+      "type": "boolean",
+      "description": "Navigation",
+      "default": true,
+      "x-prompt": "Should this be added to the site's navigation?"
     }
   },
-  "required": ["project", "componentClassName"]
+  "required": ["project", "feature"]
 }
