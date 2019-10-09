@@ -275,6 +275,23 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
     const pos = featureRoutingRouteArrayLiteral.getStart() + 1;
     featureRoutingRecorder.insertRight(pos, appRoutingComponentRoutesTextFormatted);
 
+    const componentChange = insertImport(
+      featureRoutingSrc,
+      featureRoutingPath,
+      options.componentClassName,
+      `./${strings.dasherize(featureName)}/${strings.dasherize(
+        featureName
+      )}.component`,
+      false
+    );
+
+    if (componentChange instanceof InsertChange) {
+      featureRoutingRecorder.insertLeft(
+        (componentChange as InsertChange).pos,
+        (componentChange as InsertChange).toAdd
+      );
+    }
+
     host.commitUpdate(featureRoutingRecorder);
 
     return host;
