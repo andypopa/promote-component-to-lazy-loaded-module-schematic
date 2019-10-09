@@ -268,42 +268,12 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
         return arrNodes[arrNodes.length - 1];
       });
 
-    const featureRoutingSrcText = featureRoutingSrc.toString();
-
-    // const addDeclarations = appRoutingComponentRoutesText.map((appRoutingComponentRouteText) => {
-    //   return addRouteDeclarationToModule(
-    //     ts.createSourceFile(featureRoutingPath, featureRoutingSrcText, ts.ScriptTarget.Latest, true),
-    //     featureRoutingPath,
-    //     appRoutingComponentRouteText,
-    //   ) as InsertChange;
-    // })
     const featureRoutingRecorder = host.beginUpdate(featureRoutingPath);
 
-    appRoutingComponentRoutesText.forEach(appRoutingComponentRouteText => {
-      if (featureRoutingRouteNodes.length === 1) {
-        const routingRouteArrayLiteral: ts.ArrayLiteralExpression = featureRoutingRouteNodes[0] as ts.ArrayLiteralExpression;
-        const pos = routingRouteArrayLiteral.getStart() + 1;
-        const fullText = routingRouteArrayLiteral.getFullText();
-        let toInsert = '';
-        if (routingRouteArrayLiteral.elements.length > 0) {
-          if (fullText.match(/\r\n/)) {
-            toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${appRoutingComponentRouteText},`;
-          } else {
-            toInsert = `${appRoutingComponentRouteText},`;
-          }
-        } else {
-          toInsert = `${appRoutingComponentRouteText}`;
-        }
-        
-        console.log('inserting right', pos, toInsert);
-        featureRoutingRecorder.insertRight(pos, toInsert);
-        // addRoute(
-        //   featureRoutingRouteNodes,
-        //   appRoutingComponentRouteText,
-        //   featureRoutingRecorder
-        // );
-      }
-    });
+    const appRoutingComponentRoutesTextFormatted = `\n  ${appRoutingComponentRoutesText.join(`,\n  `)}\n`;
+    const featureRoutingRouteArrayLiteral: ts.ArrayLiteralExpression = featureRoutingRouteNodes[0] as ts.ArrayLiteralExpression;
+    const pos = featureRoutingRouteArrayLiteral.getStart() + 1;
+    featureRoutingRecorder.insertRight(pos, appRoutingComponentRoutesTextFormatted);
 
     host.commitUpdate(featureRoutingRecorder);
 
