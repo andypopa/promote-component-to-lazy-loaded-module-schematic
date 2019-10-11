@@ -293,6 +293,8 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
       );
     }
 
+    host.commitUpdate(featureRoutingRecorder);
+
     const featurePath = `${
       options.appProjectRoot
     }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
@@ -308,9 +310,18 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
       ts.ScriptTarget.Latest,
       true
     );
-    addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
 
-    host.commitUpdate(featureRoutingRecorder);
+    const featureRecorder = host.beginUpdate(featurePath);
+
+    const addDeclaration = addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
+      if (addDeclaration instanceof InsertChange) {
+        featureRecorder.insertLeft(
+          (addDeclaration as InsertChange).pos,
+          (addDeclaration as InsertChange).toAdd
+        )
+      }
+
+    host.commitUpdate(featureRecorder);
 
     return host;
   };
