@@ -23,7 +23,7 @@ import {
 
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
 import Schema from './schema';
-import { strings } from '@angular-devkit/core';
+import { strings, experimental } from '@angular-devkit/core';
 import * as ts from 'typescript';
 import {
   insertImport,
@@ -31,8 +31,10 @@ import {
   InsertChange,
   findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
+import * as fs from 'fs';
 
 import * as path from 'path';
+import { execFileSync } from 'child_process';
 
 function getFeatureName(componentClassName) {
   return componentClassName.replace('Component', '');
@@ -50,6 +52,55 @@ function isWebComponent(element) {
   return element.tagName.includes('-');
 }
 
+
+function outputCwd(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    console.log(process.cwd());
+    return host
+  }
+};
+
+function runNgc(options: NormalizedSchema): Rule {
+  return (tree: Tree) => {
+    const workspaceConfig = tree.read('/angular.json');
+    if (!workspaceConfig) {
+      throw new SchematicsException('Could not find Angular workspace configuration');
+    }
+
+    // convert workspace to string
+    const workspaceContent = workspaceConfig.toString();
+
+    // parse workspace string into JSON object
+    const workspace: experimental.workspace.WorkspaceSchema = JSON.parse(workspaceContent);
+
+    const projectSourceRoot = workspace.projects[options.project].sourceRoot;
+
+    if (!projectSourceRoot) {
+      throw new SchematicsException(`Could not find sourceRoot for project '${options.project}' in workspace configuration (angular.json)`);
+    }
+
+    console.log(projectSourceRoot);
+
+    const projectOutputPath = workspace.projects[options.project].architect.build.options.outputPath;
+
+    if (!projectOutputPath) {
+      throw new SchematicsException(`Could not find sourceRoot for project '${options.project}' in workspace configuration (angular.json)`);
+    }
+
+    console.log(projectOutputPath);
+
+    console.log('Executing ngc');
+    const ngcRelativePath = '/node_modules/.bin/ngc';
+    const ngcAbsolutePath = path.join(process.cwd(), ngcRelativePath);
+
+    if (!fs.existsSync(ngcAbsolutePath)) {
+      throw new SchematicsException(`Could not find ngc at ${ngcAbsolutePath}`);
+    }
+    execFileSync(ngcAbsolutePath);
+
+    return tree;
+  }
+}
 // function addComponentToRoute(options: NormalizedSchema): Rule {
 //   return (host: Tree) => {
 //     const featureRoutingPath = `${
@@ -590,9 +641,11 @@ export default function(schema: Schema): Rule {
         name: `${getFeatureName(options.componentClassName)}`,
         routing: true
       }),
+      runNgc(options),
       // move('apps/qwerty/src/app/x', 'apps/qwerty/src/app/y'),
       // removeComponentImportAndDeclarationsArrayEntry(options),
-      moveComponentRoutes(options),
+      outputCwd(options),
+      // moveComponentRoutes(options),
     ]);
   };
 }

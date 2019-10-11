@@ -2,12 +2,8 @@ import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'martzcodes-map',
-  template: `
-    <p>
-      map works!
-    </p>
-  `,
-  styles: []
+  templateUrl: './map.component.html',
+  styleUrls: ['./map.component.css']
 })
 export class MapComponent implements OnInit {
 
