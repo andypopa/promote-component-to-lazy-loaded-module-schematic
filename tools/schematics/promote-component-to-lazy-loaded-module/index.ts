@@ -17,7 +17,8 @@ import {
 
 import {
   getDecoratorMetadata,
-  getMetadataField
+  getMetadataField,
+  addDeclarationToModule
 } from '@schematics/angular/utility/ast-utils';
 
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
@@ -275,13 +276,13 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
     const pos = featureRoutingRouteArrayLiteral.getStart() + 1;
     featureRoutingRecorder.insertRight(pos, appRoutingComponentRoutesTextFormatted);
 
+    const newComponentPath = `./${strings.dasherize(featureName)}/${strings.dasherize(featureName)}.component`;
+
     const componentChange = insertImport(
       featureRoutingSrc,
       featureRoutingPath,
       options.componentClassName,
-      `./${strings.dasherize(featureName)}/${strings.dasherize(
-        featureName
-      )}.component`,
+      newComponentPath,
       false
     );
 
@@ -291,6 +292,23 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
         (componentChange as InsertChange).toAdd
       );
     }
+
+    const featurePath = `${
+      options.appProjectRoot
+    }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
+      featureName
+    )}.module.ts`;
+
+    // tslint:disable-next-line
+    const feature = host.read(featurePath)!.toString('utf-8');
+
+    const featureSrc = ts.createSourceFile(
+      `${strings.dasherize(featureName)}.module.ts`,
+      featureRouting,
+      ts.ScriptTarget.Latest,
+      true
+    );
+    addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
 
     host.commitUpdate(featureRoutingRecorder);
 
@@ -315,145 +333,6 @@ function addRoute(routingRouteNodes, routeText, recorder) {
   
   console.log('inserting right', pos, toInsert);
   recorder.insertRight(pos, toInsert);
-}
-
-function addRouteToApp(options: NormalizedSchema): Rule {
-  return (host: Tree) => {
-    const appRoutingPath = `${
-      options.appProjectRoot
-    }/src/app/app-routing.module.ts`;
-
-    // tslint:disable-next-line
-    const appRouting = host.read(appRoutingPath)!.toString('utf-8');
-
-    const src = ts.createSourceFile(
-      'app-routing.module.ts',
-      appRouting,
-      ts.ScriptTarget.Latest,
-      true
-    );
-
-    const route = `{
-      path: '${options.componentClassName}',
-      loadChildren: './${strings.dasherize(
-        options.componentClassName
-      )}/${strings.dasherize(
-      options.componentClassName
-    )}.module#${strings.capitalize(options.componentClassName)}Module'
-    }`;
-
-    const nodes = getSourceNodes(src);
-    const routeNodes = nodes
-      .filter((n: ts.Node) => {
-        if (n.kind === ts.SyntaxKind.VariableDeclaration) {
-          if (
-            n.getChildren().findIndex(c => {
-              return (
-                c.kind === ts.SyntaxKind.Identifier && c.getText() === 'routes'
-              );
-            }) !== -1
-          ) {
-            return true;
-          }
-        }
-        return false;
-      })
-      .map((n: ts.Node) => {
-        const arrNodes = n
-          .getChildren()
-          .filter(c => c.kind === ts.SyntaxKind.ArrayLiteralExpression);
-        return arrNodes[arrNodes.length - 1];
-      });
-
-    if (routeNodes.length === 1) {
-      const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
-      const pos = navigation.getStart() + 1;
-      const fullText = navigation.getFullText();
-      let toInsert = '';
-      if (navigation.elements.length > 0) {
-        if (fullText.match(/\r\n/)) {
-          toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${route},`;
-        } else {
-          toInsert = `${route},`;
-        }
-      } else {
-        toInsert = `${route}`;
-      }
-
-      const recorder = host.beginUpdate(appRoutingPath);
-      recorder.insertRight(pos, toInsert);
-
-      host.commitUpdate(recorder);
-
-      return host;
-    }
-  };
-}
-
-function addNavigation(options: NormalizedSchema): Rule {
-  return (host: Tree) => {
-    return host;
-
-    const componentPath = `${options.appProjectRoot}/src/app/app.component.ts`;
-    const navPath = `{name: '${strings.capitalize(
-      options.componentClassName
-    )}', router: '/${options.componentClassName}'}`;
-    // tslint:disable-next-line
-    const appComponent = host.read(componentPath)!.toString('utf-8');
-
-    const src = ts.createSourceFile(
-      'app.component.ts',
-      appComponent,
-      ts.ScriptTarget.Latest,
-      true
-    );
-
-    const nodes = getSourceNodes(src);
-    const navNodes = nodes
-      .filter((n: ts.Node) => {
-        if (n.kind === ts.SyntaxKind.BinaryExpression) {
-          if (
-            n.getChildren().findIndex(c => {
-              return (
-                c.kind === ts.SyntaxKind.PropertyAccessExpression &&
-                c.getText() === 'this.navigation'
-              );
-            }) !== -1
-          ) {
-            return true;
-          }
-        }
-        return false;
-      })
-      .map((n: ts.Node) => {
-        const arrNodes = n
-          .getChildren()
-          .filter(c => (c.kind = ts.SyntaxKind.ArrayLiteralExpression));
-        return arrNodes[arrNodes.length - 1];
-      });
-
-    if (navNodes.length === 1) {
-      const navigation: ts.ArrayLiteralExpression = navNodes[0] as ts.ArrayLiteralExpression;
-      const pos = navigation.getEnd() - 1;
-      const fullText = navigation.getFullText();
-      let toInsert = '';
-      if (navigation.elements.length > 0) {
-        if (fullText.match(/\r\n/)) {
-          toInsert = `,${fullText.match(/\r\n(\r?)\s*/)[0]}${navPath}`;
-        } else {
-          toInsert = `, ${navPath}`;
-        }
-      } else {
-        toInsert = `${navPath}`;
-      }
-
-      const recorder = host.beginUpdate(componentPath);
-      recorder.insertLeft(pos, toInsert);
-      host.commitUpdate(recorder);
-    }
-
-    return host;
-  };
 }
 
 function getComponentImportDetails(src, componentClassName) {
