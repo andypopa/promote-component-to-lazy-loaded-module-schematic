@@ -1,11 +1,14 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { DummyGuard } from '@martzcodes/core';
+import { MapComponent } from './map/map.component';
 const routes: Routes = [
   {
-    path: 'asdf',
-    loadChildren: () => import('./asdf/asdf.module').then(m => m.AsdfModule),
-    canLoad: [DummyGuard]
+    path: 'map',
+    component: MapComponent
+  },
+  {
+    path: 'map/:city',
+    component: MapComponent
   }
 ];
 @NgModule({
