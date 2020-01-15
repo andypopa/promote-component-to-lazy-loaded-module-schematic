@@ -41,40 +41,39 @@ function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rul
   return (host: Tree) => {
     const featureName = getFeatureName(options.componentClassName);
 
-    const featureRoutingPath = `${
+    const featurePath = `${
       options.appProjectRoot
       }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
         featureName
-      )}-routing.module.ts`;
-    const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
+      )}.module.ts`;
+    const feature = host.read(featurePath)!.toString('utf-8');
 
-    const featureRoutingSrc = ts.createSourceFile(
-      `${strings.dasherize(featureName)}-routing.module.ts`,
-      featureRouting,
+    const featureSrc = ts.createSourceFile(
+      `${strings.dasherize(featureName)}.module.ts`,
+      feature,
       ts.ScriptTarget.Latest,
       true
     );
 
     const changes = addImportToModule(
-      featureRoutingSrc,
-      featureRoutingPath,
+      featureSrc,
+      featurePath,
       'SharedModule',
       '../shared/shared.module'
     );
 
-
-    const featureRoutingRecorder = host.beginUpdate(featureRoutingPath);
+    const featureRecorder = host.beginUpdate(featurePath);
 
     changes.forEach((change) => {
       if (change instanceof InsertChange) {
-        featureRoutingRecorder.insertLeft(
+        featureRecorder.insertLeft(
           (change as InsertChange).pos,
           (change as InsertChange).toAdd
         );
       }
     })
 
-    host.commitUpdate(featureRoutingRecorder);
+    host.commitUpdate(featureRecorder);
 
     return host;
   }
