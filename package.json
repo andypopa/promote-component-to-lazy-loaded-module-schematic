@@ -27,7 +27,7 @@
     "schematic": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent",
     "dep-graph": "./node_modules/.bin/nx dep-graph",
     "help": "./node_modules/.bin/nx help",
-    "reset": "cp -R ./map ./apps/qwerty/src/app"
+    "reset": "rm -rf ./apps/qwerty/src/app/map && cp -R ./map ./apps/qwerty/src/app"
   },
   "private": true,
   "dependencies": {
