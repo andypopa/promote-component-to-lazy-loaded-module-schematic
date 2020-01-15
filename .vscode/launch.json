@@ -7,11 +7,20 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/serve",
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
+            "name": "Schematic dry run",
+            "program": "${workspaceFolder}/node_modules/.bin/nx",
+            "args": ["workspace-schematic", "promote-component-to-lazy-loaded-module", "--project qwerty", "--componentClassName MapComponent --dry-run"],
+            "stopOnEntry": true,
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Actually run schematic",
+            "program": "${workspaceFolder}/node_modules/.bin/nx",
+            "args": ["workspace-schematic", "promote-component-to-lazy-loaded-module", "--project qwerty", "--componentClassName MapComponent --dry-run"],
+            "stopOnEntry": true,
+            "outputCapture": "std"
         }
     ]
 }

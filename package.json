@@ -23,6 +23,8 @@
     "update": "ng update @nrwl/workspace",
     "update:check": "ng update",
     "workspace-schematic": "./node_modules/.bin/nx workspace-schematic",
+    "schematic-dry-run": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent --dry-run",
+    "schematic": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent",
     "dep-graph": "./node_modules/.bin/nx dep-graph",
     "help": "./node_modules/.bin/nx help"
   },
@@ -39,6 +41,7 @@
     "@nrwl/angular": "^8.6.0",
     "@nrwl/workspace": "^8.6.0",
     "core-js": "^2.5.4",
+    "lodash.get": "^4.4.2",
     "rxjs": "~6.5.3",
     "tsutils": "^3.17.1",
     "zone.js": "^0.10.2"

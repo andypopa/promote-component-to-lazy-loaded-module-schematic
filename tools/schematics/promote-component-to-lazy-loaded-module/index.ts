@@ -1,3 +1,5 @@
+import { Compiler } from '@angular/core';
+
 import {
   chain,
   move,
@@ -21,7 +23,7 @@ import {
   addDeclarationToModule
 } from '@schematics/angular/utility/ast-utils';
 
-import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
+import { getWorkspacePath, readJsonInTree, readWorkspaceJson, readTsConfig } from '@nrwl/workspace';
 import Schema from './schema';
 import { strings, experimental } from '@angular-devkit/core';
 import * as ts from 'typescript';
@@ -31,6 +33,9 @@ import {
   InsertChange,
   findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
+
+import * as get from 'lodash.get';
+
 import * as fs from 'fs';
 
 import * as path from 'path';
@@ -60,18 +65,58 @@ function outputCwd(options: NormalizedSchema): Rule {
   }
 };
 
+function outputLocalNgVersion(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const packageJson = readJsonInTree(host, '/package.json');
+    const localNgVersion = packageJson.dependencies['@angular/core'];
+    console.log(`TCL: localNgVersion`, localNgVersion);
+    return host;
+  }
+};
+
+function outputIsIvyEnabled(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const workspace = readWorkspaceJson();
+    const project = workspace.projects[options.project];
+    const tsConfigAppPath = project.architect.build.options.tsConfig;
+    const tsConfigApp = readJsonInTree(host, tsConfigAppPath);
+    const isEvyEnabled = get(tsConfigApp, 'angularCompilerOptions.enableIvy', false);
+    console.log(`TCL: isEvyEnabled`, isEvyEnabled);
+    return host;
+  }
+};
+
+// function outputMainType(options: NormalizedSchema): Rule {
+//   return (host: Tree) => {
+//     const workspace = readWorkspaceJson();
+//     const project = workspace.projects[options.project];
+//     const mainTsPath = project.architect.build.options.main;
+//     resolveEntryModuleFromMain
+//     console.log(`TCL: mainTsPath`, mainTsPath);
+//     return host;
+//   }
+// };
+
+function compileComponent(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const compiler = new Compiler();
+    const appPath = `${
+      options.appProjectRoot
+    }/src/app/app.module.ts`;
+
+    const appAbsolutePath = path.join(process.cwd(), appPath);
+    compileComponent
+    import(appAbsolutePath).then((importedApp) => {
+      console.log(importedApp);
+      return host;
+
+    })
+  }
+};
+
 function runNgc(options: NormalizedSchema): Rule {
   return (tree: Tree) => {
-    const workspaceConfig = tree.read('/angular.json');
-    if (!workspaceConfig) {
-      throw new SchematicsException('Could not find Angular workspace configuration');
-    }
-
-    // convert workspace to string
-    const workspaceContent = workspaceConfig.toString();
-
-    // parse workspace string into JSON object
-    const workspace: experimental.workspace.WorkspaceSchema = JSON.parse(workspaceContent);
+    const workspace = readWorkspaceJson();
 
     const projectSourceRoot = workspace.projects[options.project].sourceRoot;
 
@@ -101,6 +146,7 @@ function runNgc(options: NormalizedSchema): Rule {
     return tree;
   }
 }
+
 // function addComponentToRoute(options: NormalizedSchema): Rule {
 //   return (host: Tree) => {
 //     const featureRoutingPath = `${
@@ -567,10 +613,17 @@ function removeComponentImportAndDeclarationsArrayEntry(
     } else {
       maybeDeclarationsArrElements = arrLiteral.elements;
     }
-
+    maybeDeclarationsArrElements.forEach(dar => {
+      console.log(dar);
+    })
     const nodeEscapedTexts = maybeDeclarationsArrElements.map(
       n => n.escapedText
     );
+    console.log(`TCL: nodeEscapedTexts`, nodeEscapedTexts);
+    const nodeTexts = maybeDeclarationsArrElements.map(
+      n => n.getText()
+    );
+    console.log(`TCL: nodeTexts`, nodeTexts);
     const targetNodeIndex = nodeEscapedTexts.indexOf(
       options.componentClassName
     );
@@ -636,15 +689,20 @@ export default function(schema: Schema): Rule {
     }
 
     return chain([
-      externalSchematic('@schematics/angular', 'module', {
-        project: options.project,
-        name: `${getFeatureName(options.componentClassName)}`,
-        routing: true
-      }),
-      runNgc(options),
+      // outputLocalNgVersion(options),
+      // externalSchematic('@schematics/angular', 'module', {
+      //   project: options.project,
+      //   name: `${getFeatureName(options.componentClassName)}`,
+      //   routing: true
+      // }),
+      // runNgc(options),
       // move('apps/qwerty/src/app/x', 'apps/qwerty/src/app/y'),
       // removeComponentImportAndDeclarationsArrayEntry(options),
-      outputCwd(options),
+      // outputCwd(options),
+      removeComponentImportAndDeclarationsArrayEntry(options),
+      compileComponent(options),
+      // outputMainType(options)
+      // outputIsIvyEnabled(options)
       // moveComponentRoutes(options),
     ]);
   };
