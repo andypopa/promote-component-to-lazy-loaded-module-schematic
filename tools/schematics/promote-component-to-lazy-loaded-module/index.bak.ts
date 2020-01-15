@@ -1,5 +1,8 @@
+import { Compiler } from '@angular/core';
+
 import {
   chain,
+  move,
   Rule,
   SchematicContext,
   Tree,
@@ -20,21 +23,220 @@ import {
   addDeclarationToModule
 } from '@schematics/angular/utility/ast-utils';
 
-import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
+import { getWorkspacePath, readJsonInTree, readWorkspaceJson, readTsConfig } from '@nrwl/workspace';
 import Schema from './schema';
-import { strings } from '@angular-devkit/core';
+import { strings, experimental } from '@angular-devkit/core';
 import * as ts from 'typescript';
 import {
   insertImport,
   getSourceNodes,
-  InsertChange
+  InsertChange,
+  findNodes
 } from '@nrwl/workspace/src/utils/ast-utils';
 
+import * as get from 'lodash.get';
+
+import * as fs from 'fs';
+
 import * as path from 'path';
+import { execFileSync } from 'child_process';
 
 function getFeatureName(componentClassName) {
   return componentClassName.replace('Component', '');
 }
+
+function getModuleName(componentClassName) {
+  return getFeatureName(componentClassName) + 'Module';
+}
+
+function getNewModulePath(componentClassName) {
+  const moduleName = getModuleName(componentClassName);
+}
+
+function isWebComponent(element) {
+  return element.tagName.includes('-');
+}
+
+
+function outputCwd(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    console.log(process.cwd());
+    return host
+  }
+};
+
+function outputLocalNgVersion(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const packageJson = readJsonInTree(host, '/package.json');
+    const localNgVersion = packageJson.dependencies['@angular/core'];
+    console.log(`TCL: localNgVersion`, localNgVersion);
+    return host;
+  }
+};
+
+function outputIsIvyEnabled(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const workspace = readWorkspaceJson();
+    const project = workspace.projects[options.project];
+    const tsConfigAppPath = project.architect.build.options.tsConfig;
+    const tsConfigApp = readJsonInTree(host, tsConfigAppPath);
+    const isEvyEnabled = get(tsConfigApp, 'angularCompilerOptions.enableIvy', false);
+    console.log(`TCL: isEvyEnabled`, isEvyEnabled);
+    return host;
+  }
+};
+
+// function outputMainType(options: NormalizedSchema): Rule {
+//   return (host: Tree) => {
+//     const workspace = readWorkspaceJson();
+//     const project = workspace.projects[options.project];
+//     const mainTsPath = project.architect.build.options.main;
+//     resolveEntryModuleFromMain
+//     console.log(`TCL: mainTsPath`, mainTsPath);
+//     return host;
+//   }
+// };
+
+function compileComponent(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const compiler = new Compiler();
+    const appPath = `${
+      options.appProjectRoot
+    }/src/app/app.module.ts`;
+
+    const appAbsolutePath = path.join(process.cwd(), appPath);
+    compileComponent
+    import(appAbsolutePath).then((importedApp) => {
+      console.log(importedApp);
+      return host;
+
+    })
+  }
+};
+
+function runNgc(options: NormalizedSchema): Rule {
+  return (tree: Tree) => {
+    const workspace = readWorkspaceJson();
+
+    const projectSourceRoot = workspace.projects[options.project].sourceRoot;
+
+    if (!projectSourceRoot) {
+      throw new SchematicsException(`Could not find sourceRoot for project '${options.project}' in workspace configuration (angular.json)`);
+    }
+
+    console.log(projectSourceRoot);
+
+    const projectOutputPath = workspace.projects[options.project].architect.build.options.outputPath;
+
+    if (!projectOutputPath) {
+      throw new SchematicsException(`Could not find sourceRoot for project '${options.project}' in workspace configuration (angular.json)`);
+    }
+
+    console.log(projectOutputPath);
+
+    console.log('Executing ngc');
+    const ngcRelativePath = '/node_modules/.bin/ngc';
+    const ngcAbsolutePath = path.join(process.cwd(), ngcRelativePath);
+
+    if (!fs.existsSync(ngcAbsolutePath)) {
+      throw new SchematicsException(`Could not find ngc at ${ngcAbsolutePath}`);
+    }
+    execFileSync(ngcAbsolutePath);
+
+    return tree;
+  }
+}
+
+// function addComponentToRoute(options: NormalizedSchema): Rule {
+//   return (host: Tree) => {
+//     const featureRoutingPath = `${
+//       options.appProjectRoot
+//     }/src/app/${strings.dasherize(
+//       options.componentClassName
+//     )}/${strings.dasherize(options.componentClassName)}-routing.module.ts`;
+
+//     // tslint:disable-next-line
+//     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
+
+//     const src = ts.createSourceFile(
+//       `${strings.dasherize(options.componentClassName)}-routing.module.ts`,
+//       featureRouting,
+//       ts.ScriptTarget.Latest,
+//       true
+//     );
+
+//     const route = `{
+//       path: '',
+//       pathMatch: 'full',
+//       component: ${strings.capitalize(
+//         options.componentClassName
+//       )}ContainerComponent
+//     }`;
+
+//     const nodes = getSourceNodes(src);
+//     const routeNodes = nodes
+//       .filter((n: ts.Node) => {
+//         if (n.kind === ts.SyntaxKind.VariableDeclaration) {
+//           if (
+//             n.getChildren().findIndex(c => {
+//               return (
+//                 c.kind === ts.SyntaxKind.Identifier && c.getText() === 'routes'
+//               );
+//             }) !== -1
+//           ) {
+//             return true;
+//           }
+//         }
+//         return false;
+//       })
+//       .map((n: ts.Node) => {
+//         const arrNodes = n
+//           .getChildren()
+//           .filter(c => c.kind === ts.SyntaxKind.ArrayLiteralExpression);
+//         return arrNodes[arrNodes.length - 1];
+//       });
+
+//     if (routeNodes.length === 1) {
+//       const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+//       const pos = navigation.getStart() + 1;
+//       const fullText = navigation.getFullText();
+//       let toInsert = '';
+//       if (navigation.elements.length > 0) {
+//         if (fullText.match(/\r\n/)) {
+//           toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${route},`;
+//         } else {
+//           toInsert = `${route},`;
+//         }
+//       } else {
+//         toInsert = `${route}`;
+//       }
+
+//       const recorder = host.beginUpdate(featureRoutingPath);
+//       recorder.insertRight(pos, toInsert);
+
+//       const componentChange = insertImport(
+//         src,
+//         featureRoutingPath,
+//         `${strings.capitalize(options.componentClassName)}ContainerComponent`,
+//         `./${strings.dasherize(
+//           options.componentClassName
+//         )}-container/${strings.dasherize(
+//           options.componentClassName
+//         )}-container.component`,
+//         false
+//       );
+//       if (componentChange instanceof InsertChange) {
+//         recorder.insertLeft(
+//           (componentChange as InsertChange).pos,
+//           (componentChange as InsertChange).toAdd
+//         );
+//       }
+
+//       host.commitUpdate(recorder);
+//       return host;
+
+//   };
+// }
 
 function moveComponentRoutes(options: NormalizedSchema): Rule {
   return (host: Tree) => {
@@ -487,13 +689,21 @@ export default function(schema: Schema): Rule {
     }
 
     return chain([
-      externalSchematic('@schematics/angular', 'module', {
-        project: options.project,
-        name: `${getFeatureName(options.componentClassName)}`,
-        routing: true
-      }),
+      // outputLocalNgVersion(options),
+      // externalSchematic('@schematics/angular', 'module', {
+      //   project: options.project,
+      //   name: `${getFeatureName(options.componentClassName)}`,
+      //   routing: true
+      // }),
+      // runNgc(options),
+      // move('apps/qwerty/src/app/x', 'apps/qwerty/src/app/y'),
+      // removeComponentImportAndDeclarationsArrayEntry(options),
+      // outputCwd(options),
       removeComponentImportAndDeclarationsArrayEntry(options),
-      moveComponentRoutes(options),
+      compileComponent(options),
+      // outputMainType(options)
+      // outputIsIvyEnabled(options)
+      // moveComponentRoutes(options),
     ]);
   };
 }
