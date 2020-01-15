@@ -65,6 +65,8 @@ function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rul
     const featureRecorder = host.beginUpdate(featurePath);
 
     changes.forEach((change) => {
+      console.log(`CHANGE: ${change}`);
+      console.log(`change instanceof InsertChange: ${change instanceof InsertChange}`);
       if (change instanceof InsertChange) {
         featureRecorder.insertLeft(
           (change as InsertChange).pos,
@@ -535,8 +537,8 @@ export default function (schema: Schema): Rule {
         name: `${getFeatureName(options.componentClassName)}`,
         routing: true
       }),
-      removeComponentImportAndDeclarationsArrayEntry(options),
-      moveComponentRoutes(options),
+      // removeComponentImportAndDeclarationsArrayEntry(options),
+      // moveComponentRoutes(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
