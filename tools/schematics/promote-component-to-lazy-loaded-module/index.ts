@@ -484,7 +484,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     recorder.remove(removeInterval.start, removeInterval.length);
 
-    host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
+    // host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
     console.log('componentParentDirectoryPath', componentParentDirectoryPath);
     const componentDirEntry = host.getDir(componentParentDirectoryPath);
 
@@ -541,7 +541,7 @@ export default function (schema: Schema): Rule {
         name: `${getFeatureName(options.componentClassName)}`,
         routing: true
       }),
-      // removeComponentImportAndDeclarationsArrayEntry(options),
+      removeComponentImportAndDeclarationsArrayEntry(options),
       // moveComponentRoutes(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
