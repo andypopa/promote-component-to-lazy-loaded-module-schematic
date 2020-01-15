@@ -542,7 +542,7 @@ export default function (schema: Schema): Rule {
         routing: true
       }),
       removeComponentImportAndDeclarationsArrayEntry(options),
-      // moveComponentRoutes(options),
+      moveComponentRoutes(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
