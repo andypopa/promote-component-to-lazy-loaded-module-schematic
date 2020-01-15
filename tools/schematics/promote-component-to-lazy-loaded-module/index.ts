@@ -18,17 +18,21 @@ import {
   getDecoratorMetadata,
   getMetadataField,
   addDeclarationToModule,
-  addImportToModule
+  addImportToModule,
+  insertImport
 } from '@schematics/angular/utility/ast-utils';
+
+import {
+  InsertChange
+} from '@schematics/angular/utility/change';
 
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
 import Schema from './schema';
 import { strings } from '@angular-devkit/core';
 import * as ts from 'typescript';
 import {
-  insertImport,
+  // insertImport,
   getSourceNodes,
-  InsertChange
 } from '@nrwl/workspace/src/utils/ast-utils';
 
 import * as path from 'path';
@@ -65,7 +69,7 @@ function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rul
     const featureRecorder = host.beginUpdate(featurePath);
 
     changes.forEach((change) => {
-      console.log(`CHANGE: ${change}`);
+      console.log(`CHANGE: ${JSON.stringify(change)}`);
       console.log(`change instanceof InsertChange: ${change instanceof InsertChange}`);
       if (change instanceof InsertChange) {
         featureRecorder.insertLeft(
