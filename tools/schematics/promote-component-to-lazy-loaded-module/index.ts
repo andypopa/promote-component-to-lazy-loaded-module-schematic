@@ -17,7 +17,8 @@ import {
 import {
   getDecoratorMetadata,
   getMetadataField,
-  addDeclarationToModule
+  addDeclarationToModule,
+  addImportToModule
 } from '@schematics/angular/utility/ast-utils';
 
 import { getWorkspacePath, readJsonInTree } from '@nrwl/workspace';
@@ -36,11 +37,54 @@ function getFeatureName(componentClassName) {
   return componentClassName.replace('Component', '');
 }
 
+function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rule {
+  return (host: Tree) => {
+    const featureName = getFeatureName(options.componentClassName);
+
+    const featureRoutingPath = `${
+      options.appProjectRoot
+      }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
+        featureName
+      )}-routing.module.ts`;
+    const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
+
+    const featureRoutingSrc = ts.createSourceFile(
+      `${strings.dasherize(featureName)}-routing.module.ts`,
+      featureRouting,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const changes = addImportToModule(
+      featureRoutingSrc,
+      featureRoutingPath,
+      'SharedModule',
+      '../shared/shared.module'
+    );
+
+
+    const featureRoutingRecorder = host.beginUpdate(featureRoutingPath);
+
+    changes.forEach((change) => {
+      if (change instanceof InsertChange) {
+        featureRoutingRecorder.insertLeft(
+          (change as InsertChange).pos,
+          (change as InsertChange).toAdd
+        );
+      }
+    })
+
+    host.commitUpdate(featureRoutingRecorder);
+
+    return host;
+  }
+}
+
 function moveComponentRoutes(options: NormalizedSchema): Rule {
   return (host: Tree) => {
     const appRoutingPath = `${
       options.appProjectRoot
-    }/src/app/app-routing.module.ts`;
+      }/src/app/app-routing.module.ts`;
 
     // tslint:disable-next-line
     const appRouting = host.read(appRoutingPath)!.toString('utf-8');
@@ -127,9 +171,9 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     const featureRoutingPath = `${
       options.appProjectRoot
-    }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
-      featureName
-    )}-routing.module.ts`;
+      }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
+        featureName
+      )}-routing.module.ts`;
 
     // tslint:disable-next-line
     const featureRouting = host.read(featureRoutingPath)!.toString('utf-8');
@@ -192,9 +236,9 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     const featurePath = `${
       options.appProjectRoot
-    }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
-      featureName
-    )}.module.ts`;
+      }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
+        featureName
+      )}.module.ts`;
 
     // tslint:disable-next-line
     const feature = host.read(featurePath)!.toString('utf-8');
@@ -209,12 +253,12 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
     const featureRecorder = host.beginUpdate(featurePath);
 
     const addDeclaration = addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
-      if (addDeclaration instanceof InsertChange) {
-        featureRecorder.insertLeft(
-          (addDeclaration as InsertChange).pos,
-          (addDeclaration as InsertChange).toAdd
-        )
-      }
+    if (addDeclaration instanceof InsertChange) {
+      featureRecorder.insertLeft(
+        (addDeclaration as InsertChange).pos,
+        (addDeclaration as InsertChange).toAdd
+      )
+    }
 
     host.commitUpdate(featureRecorder);
 
@@ -236,7 +280,7 @@ function addRoute(routingRouteNodes, routeText, recorder) {
   } else {
     toInsert = `${routeText}`;
   }
-  
+
   console.log('inserting right', pos, toInsert);
   recorder.insertRight(pos, toInsert);
 }
@@ -365,7 +409,7 @@ function removeComponentImportAndDeclarationsArrayEntry(
     if (componentImportDetails === null) {
       throw new Error(
         `Couldn't get componentImportDetails for componentClassName ${
-          options.componentClassName
+        options.componentClassName
         }`
       );
     }
@@ -475,7 +519,7 @@ function normalizeOptions(host: Tree, options: Schema): NormalizedSchema {
   };
 }
 
-export default function(schema: Schema): Rule {
+export default function (schema: Schema): Rule {
   return (host: Tree, context: SchematicContext) => {
     const options = normalizeOptions(host, schema);
 
@@ -494,6 +538,7 @@ export default function(schema: Schema): Rule {
       }),
       removeComponentImportAndDeclarationsArrayEntry(options),
       moveComponentRoutes(options),
+      addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
 }
