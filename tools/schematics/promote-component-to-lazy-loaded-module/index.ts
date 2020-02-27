@@ -4,7 +4,14 @@ import {
   SchematicContext,
   Tree,
   SchematicsException,
-  externalSchematic
+  externalSchematic,
+  move,
+  apply,
+  filter,
+  url,
+  mergeWith,
+  MergeStrategy,
+  branchAndMerge
 } from '@angular-devkit/schematics';
 
 import {
@@ -37,8 +44,49 @@ import {
 
 import * as path from 'path';
 
+function getComponentDirectoryPath(options: NormalizedSchema) {
+  const featureName = getFeatureName(options.componentClassName);
+
+  const componentDirectoryPath = `${
+    options.appProjectRoot
+    }/src/app/${strings.dasherize(featureName)}`;
+
+  return componentDirectoryPath;
+}
+
+function getNewComponentDirectoryPath(options: NormalizedSchema) {
+  const featureName = getFeatureName(options.componentClassName);
+
+  const componentDirectoryPath = ''; //getComponentDirectoryPath(options);
+  const newComponentDirectoryPath = `${componentDirectoryPath}/${strings.dasherize(featureName)}`;
+  // console.log(`TCL: getNewComponentDirectoryPath -> newComponentDirectoryPath`, newComponentDirectoryPath);
+  
+  return newComponentDirectoryPath;
+}
+
 function getFeatureName(componentClassName) {
   return componentClassName.replace('Component', '');
+}
+
+function createNewComponentDirectory(options): Rule {
+  console.log('createNewComponentDirectory fn');
+  return (host: Tree) => {
+    console.log('createNewComponentDirectory λ');
+    const newComponentDirectoryPath = getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options);
+    const gitKeepPath = `${newComponentDirectoryPath}/.gitkeep`;
+    host.create(gitKeepPath, '');
+    return host;
+  };
+}
+
+function createNewComponentDirectoryAndMoveFiles(options): Rule {
+  return (host: Tree) => {
+    const newComponentDirectoryPath = getNewComponentDirectoryPath(options);
+    const gitKeepPath = `${newComponentDirectoryPath}/.gitkeep`;
+    host.create(gitKeepPath, '');
+    // return host;
+    return move(getComponentDirectoryPath(options), getNewComponentDirectoryPath(options));
+  };
 }
 
 function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rule {
@@ -535,15 +583,45 @@ export default function (schema: Schema): Rule {
       );
     }
 
+    // const componentSource = apply(
+    //   url(getComponentDirectoryPath(options)),
+    //   [
+    //     filter((path) => {
+    //       return path.includes(getComponentDirectoryPath(options))
+    //     }),
+    //     move(getNewComponentDirectoryPath(options))
+    //   ]
+    // );
+
+    // const moveRule = mergeWith(componentSource, MergeStrategy.Default);
+
     return chain([
-      externalSchematic('@schematics/angular', 'module', {
-        project: options.project,
-        name: `${getFeatureName(options.componentClassName)}`,
-        routing: true
-      }),
-      removeComponentImportAndDeclarationsArrayEntry(options),
-      moveComponentRoutes(options),
-      addSharedModuleImportToLazyLoadedModule(options)
+      createNewComponentDirectory(options),
+      branchAndMerge(chain([
+        filter((path) => {
+          const isInComponentFolder = path.includes(getComponentDirectoryPath(options));
+          const isNotGitKeepFile = !path.endsWith('.gitkeep');
+          const isValid = isInComponentFolder && isNotGitKeepFile;
+
+          if (isValid) {
+            console.log(path);
+          }
+          return isValid;
+        }),
+        move(getComponentDirectoryPath(options), getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options))
+      ]))
+
+
+      // move(getComponentDirectoryPath(options), getNewComponentDirectoryPath(options)),
+      // createNewComponentDirectoryAndMoveFiles(options),
+      // externalSchematic('@schematics/angular', 'module', {
+      //   project: options.project,
+      //   name: `${getFeatureName(options.componentClassName)}`,
+      //   routing: true
+      // }),
+      // removeComponentImportAndDeclarationsArrayEntry(options),
+      // moveComponentRoutes(options),
+      // addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
 }
