@@ -6,12 +6,12 @@
     "schematics": {
       "promote-component-to-lazy-loaded-module": {
         "factory": "../../dist/out-tsc/schematics/promote-component-to-lazy-loaded-module/index",
-        "schema": "./schematics/promote-component-to-lazy-loaded-module/schema.json",
+        "schema": "./promote-component-to-lazy-loaded-module/schema.json",
         "description": "Promotes an Angular component to a lazy-loaded module containing that component, appropriate routing, etc."
       },
       "create-new-dir": {
         "factory": "../../dist/out-tsc/schematics/create-new-dir/index",
-        "schema": "./schematics/create-new-dir/schema.json",
+        "schema": "./create-new-dir/schema.json",
         "description": "Creates a subdirectory for promoting an Angular component to lazy-loaded module."
       }
     }
