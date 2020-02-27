@@ -596,7 +596,7 @@ export default function (schema: Schema): Rule {
     // const moveRule = mergeWith(componentSource, MergeStrategy.Default);
 
     return chain([
-      createNewComponentDirectory(options),
+      // createNewComponentDirectory(options),
       filter((path) => {
         const isInComponentFolder = path.includes(getComponentDirectoryPath(options));
         const isNotGitKeepFile = !path.endsWith('.gitkeep');
