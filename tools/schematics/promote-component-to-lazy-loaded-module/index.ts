@@ -597,19 +597,17 @@ export default function (schema: Schema): Rule {
 
     return chain([
       createNewComponentDirectory(options),
-      branchAndMerge(chain([
-        filter((path) => {
-          const isInComponentFolder = path.includes(getComponentDirectoryPath(options));
-          const isNotGitKeepFile = !path.endsWith('.gitkeep');
-          const isValid = isInComponentFolder && isNotGitKeepFile;
+      filter((path) => {
+        const isInComponentFolder = path.includes(getComponentDirectoryPath(options));
+        const isNotGitKeepFile = !path.endsWith('.gitkeep');
+        const isValid = isInComponentFolder && isNotGitKeepFile;
 
-          if (isValid) {
-            console.log(path);
-          }
-          return isValid;
-        }),
-        move(getComponentDirectoryPath(options), getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options))
-      ]))
+        if (isValid) {
+          console.log(path);
+        }
+        return isValid;
+      }),
+      move(getComponentDirectoryPath(options), getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options))
 
 
       // move(getComponentDirectoryPath(options), getNewComponentDirectoryPath(options)),
