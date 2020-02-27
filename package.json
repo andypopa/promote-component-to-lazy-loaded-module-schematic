@@ -2,6 +2,7 @@
   "name": "medium",
   "version": "0.0.0",
   "license": "MIT",
+  "schematics": "./tools/schematics/collection.json",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -23,11 +24,12 @@
     "update": "ng update @nrwl/workspace",
     "update:check": "ng update",
     "workspace-schematic": "./node_modules/.bin/nx workspace-schematic",
-    "schematic-dry-run": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent --dry-run",
-    "schematic": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent",
     "dep-graph": "./node_modules/.bin/nx dep-graph",
     "help": "./node_modules/.bin/nx help",
-    "reset": "rm -rf ./apps/qwerty/src/app/map && cp -R ./reset/ ./apps/qwerty/src/app"
+    "reset": "rm -rf ./apps/qwerty/src/app/map && cp -R ./reset/ ./apps/qwerty/src/app",
+    "schematic": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent",
+    "schematic:dry-run": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent --dry-run",
+    "schematic:build": "tsc -p tools/tsconfig.tools.json"
   },
   "private": true,
   "dependencies": {
@@ -56,6 +58,7 @@
     "@nrwl/cli": "^8.6.0",
     "@nrwl/cypress": "8.6.0",
     "@nrwl/jest": "8.6.0",
+    "@nrwl/schematics": "^8.12.9",
     "@types/jest": "24.0.9",
     "@types/node": "~8.9.4",
     "codelyzer": "^5.1.2",
