@@ -13,6 +13,11 @@
         "factory": "../../dist/out-tsc/schematics/create-new-dir/index",
         "schema": "./create-new-dir/schema.json",
         "description": "Creates a subdirectory for promoting an Angular component to lazy-loaded module."
+      },
+      "orchestrator": {
+        "factory": "../../dist/out-tsc/schematics/orchestrator/index",
+        "schema": "./orchestrator/schema.json",
+        "description": "Runs multiple schematics."
       }
     }
   }
