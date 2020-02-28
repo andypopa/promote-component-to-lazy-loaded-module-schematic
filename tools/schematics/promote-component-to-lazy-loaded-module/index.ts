@@ -121,7 +121,7 @@ function addSharedModuleImportToLazyLoadedModule(options: NormalizedSchema): Rul
       console.log(`change instanceof InsertChange: ${change instanceof InsertChange}`);
       if (change instanceof InsertChange) {
         featureRecorder.insertLeft(
-          (change as InsertChange).pos,
+          (change as InsertChange).pos, 
           (change as InsertChange).toAdd
         );
       }
@@ -190,11 +190,11 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
             if (!isComponentProperty) return false;
 
             const componentPropertyValue = (p as ts.PropertyAssignment).initializer.getText();
-            const isComponentPropertyValueComponentClassName =
+            const isComponentPropertyValueEqualToComponentClassName =
               componentPropertyValue === options.componentClassName;
 
             return (
-              isComponentProperty && isComponentPropertyValueComponentClassName
+              isComponentProperty && isComponentPropertyValueEqualToComponentClassName
             );
           }
         )[0];
@@ -210,11 +210,13 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
       cr.getText()
     );
     const appRoutingRecorder = host.beginUpdate(appRoutingPath);
-
     appRoutingComponentRoutes.forEach(appRoutingComponentRoute => {
+      const nextCharIdx = appRoutingComponentRoute.getEnd() + 1;
+      const end = nextCharIdx ? nextCharIdx : appRoutingComponentRoute.getEnd();
+
       appRoutingRecorder.remove(
         appRoutingComponentRoute.getStart(),
-        appRoutingComponentRoute.getEnd() - appRoutingComponentRoute.getStart()
+        end - appRoutingComponentRoute.getStart()
       );
     });
 
@@ -319,23 +321,91 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
   };
 }
 
-function addRoute(routingRouteNodes, routeText, recorder) {
-  const routingRouteArrayLiteral: ts.ArrayLiteralExpression = routingRouteNodes[0] as ts.ArrayLiteralExpression;
-  const pos = routingRouteArrayLiteral.getStart() + 1;
-  const fullText = routingRouteArrayLiteral.getFullText();
-  let toInsert = '';
-  if (routingRouteArrayLiteral.elements.length > 0) {
-    if (fullText.match(/\r\n/)) {
-      toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${routeText},`;
-    } else {
-      toInsert = `${routeText},`;
-    }
-  } else {
-    toInsert = `${routeText}`;
-  }
+function addLazyLoadedModuleRouteToAppRoutingModule(options: any): Rule {
+  return (tree: Tree) => {
+    const appRoutingModulePath = `apps/${
+      options.project
+      }/src/app/app-routing.module.ts`;
 
-  console.log('inserting right', pos, toInsert);
-  recorder.insertRight(pos, toInsert);
+    // tslint:disable-next-line
+    const appRoutingModule = tree.read(appRoutingModulePath)!.toString('utf-8');
+
+    const appRoutingModuleSrc = ts.createSourceFile(
+      `${strings.dasherize(options.name)}-routing.module.ts`,
+      appRoutingModule,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const recorder = tree.beginUpdate(appRoutingModulePath);
+
+    const route = `  {
+    path: '${strings.dasherize(options.name)}',
+    loadChildren: () => import('./${strings.dasherize(options.name)}/${strings.dasherize(options.name)}.module').then(m => m.${strings.classify(options.name)}Module),
+    canActivate: [AuthGuard]
+  }`;
+
+    const addRouteChange = addRoute(route, appRoutingModulePath, appRoutingModuleSrc);
+
+    if (addRouteChange instanceof InsertChange) {
+      recorder.insertRight(
+        (addRouteChange as InsertChange).pos,
+        (addRouteChange as InsertChange).toAdd
+      );
+    }
+
+    tree.commitUpdate(recorder);
+    return tree;
+  }
+}
+
+function addRoute(route: string, path: string, src: ts.SourceFile): InsertChange {
+  const nodes = getSourceNodes(src);
+  const routeNodes = nodes
+    .filter((n: ts.Node) => {
+      if (n.kind === ts.SyntaxKind.VariableDeclaration) {
+        if (
+          n.getChildren().findIndex(c => {
+            return (
+              c.kind === ts.SyntaxKind.Identifier && c.getText() === 'routes'
+            );
+          }) !== -1
+        ) {
+          return true;
+        }
+      }
+      return false;
+    })
+    .map((n: ts.Node) => {
+      const arrNodes = n
+        .getChildren()
+        .filter(c => c.kind === ts.SyntaxKind.ArrayLiteralExpression);
+      return arrNodes[arrNodes.length - 1];
+    });
+
+  if (routeNodes.length === 1) {
+    const navigation: ts.ArrayLiteralExpression = routeNodes[0] as ts.ArrayLiteralExpression;
+    const pos = navigation.getStart() + 1;
+    const fullText = navigation.getFullText();
+    let toInsert = '';
+    if (navigation.elements.length > 0) {
+      if (fullText.indexOf(route) !== -1) {
+        return null;
+      }
+
+      if (fullText.match(/\r\n/)) {
+        toInsert = `${fullText.match(/\r\n(\r?)\s*/)[0]}${route},`;
+      } else {
+        toInsert = `${route},`;
+      }
+    } else {
+      toInsert = `${route}`;
+    }
+
+    const change = new InsertChange(path, pos, toInsert);
+    return change;
+  };
+  return null;
 }
 
 function getComponentImportDetails(src, componentClassName) {
@@ -547,6 +617,50 @@ function removeComponentImportAndDeclarationsArrayEntry(
   };
 }
 
+function removeComponentImportFromAppRoutingModule(
+  options: NormalizedSchema
+): Rule {
+  return (host: Tree) => {
+    const appSourcePath = `${options.appProjectRoot}/src/app`;
+    const appRoutingModulePath = path.join(appSourcePath, `app-routing.module.ts`);
+
+    // tslint:disable-next-line
+    const appRoutingModule = host.read(appRoutingModulePath)!.toString('utf-8');
+
+    const src = ts.createSourceFile(
+      `app-routing.module.ts`,
+      appRoutingModule,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const componentImportDetails = getComponentImportDetails(
+      src,
+      options.componentClassName
+    );
+
+    if (componentImportDetails === null) {
+      throw new Error(
+        `Couldn't get componentImportDetails for componentClassName ${
+        options.componentClassName
+        }`
+      );
+    }
+
+    const { componentRelativePath, parentNode } = componentImportDetails;
+
+    const recorder = host.beginUpdate(appRoutingModulePath);
+    recorder.remove(
+      parentNode.getStart(),
+      parentNode.getEnd() - parentNode.getStart()
+    );
+
+    host.commitUpdate(recorder);
+
+    return host;
+  };
+}
+
 function showTree(node: ts.Node, indent: string = '    '): void {
   console.log(indent + ts.SyntaxKind[node.kind]);
 
@@ -609,6 +723,9 @@ export default function (schema: Schema): Rule {
       }),
       removeComponentImportAndDeclarationsArrayEntry(options),
       moveComponentRoutes(options),
+      removeComponentImportFromAppRoutingModule(options),
+      // add feature module import to app-routing.module.ts?
+      // addLazyLoadedModuleRouteToAppRoutingModule(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
