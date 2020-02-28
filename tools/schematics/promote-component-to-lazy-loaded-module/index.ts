@@ -209,16 +209,16 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
     const appRoutingComponentRoutesText = appRoutingComponentRoutes.map(cr =>
       cr.getText()
     );
-    // const appRoutingRecorder = host.beginUpdate(appRoutingPath);
+    const appRoutingRecorder = host.beginUpdate(appRoutingPath);
 
-    // appRoutingComponentRoutes.forEach(appRoutingComponentRoute => {
-    //   appRoutingRecorder.remove(
-    //     appRoutingComponentRoute.getStart(),
-    //     appRoutingComponentRoute.getEnd() - appRoutingComponentRoute.getStart()
-    //   );
-    // });
+    appRoutingComponentRoutes.forEach(appRoutingComponentRoute => {
+      appRoutingRecorder.remove(
+        appRoutingComponentRoute.getStart(),
+        appRoutingComponentRoute.getEnd() - appRoutingComponentRoute.getStart()
+      );
+    });
 
-    // host.commitUpdate(appRoutingRecorder);
+    host.commitUpdate(appRoutingRecorder);
 
     const featureName = getFeatureName(options.componentClassName);
 
