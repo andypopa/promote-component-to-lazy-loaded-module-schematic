@@ -572,6 +572,23 @@ function normalizeOptions(host: Tree, options: Schema): NormalizedSchema {
   };
 }
 
+function moveComponentFilesToSubdir(options: any): Rule {
+  return (tree: Tree) => {
+    const componentDirectoryPath = getComponentDirectoryPath(options);
+    const newComponentDirectoryPath = getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options);
+
+    tree.getDir(componentDirectoryPath)
+      .visit((filePath) => {
+        const content = tree.read(filePath);
+        tree.create(
+          filePath.replace(componentDirectoryPath, newComponentDirectoryPath),
+          content
+        );
+        tree.delete(filePath);
+      })
+  }
+}
+
 export default function (schema: Schema): Rule {
   return (host: Tree, context: SchematicContext) => {
     const options = normalizeOptions(host, schema);
@@ -583,43 +600,16 @@ export default function (schema: Schema): Rule {
       );
     }
 
-    // const componentSource = apply(
-    //   url(getComponentDirectoryPath(options)),
-    //   [
-    //     filter((path) => {
-    //       return path.includes(getComponentDirectoryPath(options))
-    //     }),
-    //     move(getNewComponentDirectoryPath(options))
-    //   ]
-    // );
-
-    // const moveRule = mergeWith(componentSource, MergeStrategy.Default);
-
     return chain([
-      // createNewComponentDirectory(options),
-      filter((path) => {
-        const isInComponentFolder = path.includes(getComponentDirectoryPath(options));
-        const isNotGitKeepFile = !path.endsWith('.gitkeep');
-        const isValid = isInComponentFolder && isNotGitKeepFile;
-
-        if (isValid) {
-          console.log(path);
-        }
-        return isValid;
+      moveComponentFilesToSubdir(options),
+      externalSchematic('@schematics/angular', 'module', {
+        project: options.project,
+        name: `${getFeatureName(options.componentClassName)}`,
+        routing: true
       }),
-      move(getComponentDirectoryPath(options), getComponentDirectoryPath(options) + getNewComponentDirectoryPath(options))
-
-
-      // move(getComponentDirectoryPath(options), getNewComponentDirectoryPath(options)),
-      // createNewComponentDirectoryAndMoveFiles(options),
-      // externalSchematic('@schematics/angular', 'module', {
-      //   project: options.project,
-      //   name: `${getFeatureName(options.componentClassName)}`,
-      //   routing: true
-      // }),
-      // removeComponentImportAndDeclarationsArrayEntry(options),
-      // moveComponentRoutes(options),
-      // addSharedModuleImportToLazyLoadedModule(options)
+      removeComponentImportAndDeclarationsArrayEntry(options),
+      moveComponentRoutes(options),
+      addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
 }
