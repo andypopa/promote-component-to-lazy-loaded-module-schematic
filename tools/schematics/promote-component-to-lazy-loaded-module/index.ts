@@ -602,15 +602,6 @@ function removeComponentImportAndDeclarationsArrayEntry(
 
     recorder.remove(removeInterval.start, removeInterval.length);
 
-    // host.delete(path.join(appSourcePath, componentRelativePath + '.ts'));
-    console.log('componentParentDirectoryPath', componentParentDirectoryPath);
-    const componentDirEntry = host.getDir(componentParentDirectoryPath);
-
-    // const newModulePath = ;
-    // componentDirEntry.subfiles.forEach((subfile) => {
-    //   const subfilePath = path.join(componentParentDirectoryPath, subfile);
-    //   host.delete(subfilePath);
-    // });
     host.commitUpdate(recorder);
 
     return host;
@@ -725,7 +716,7 @@ export default function (schema: Schema): Rule {
       moveComponentRoutes(options),
       removeComponentImportFromAppRoutingModule(options),
       // add feature module import to app-routing.module.ts?
-      // addLazyLoadedModuleRouteToAppRoutingModule(options),
+      addLazyLoadedModuleRouteToAppRoutingModule(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
   };
