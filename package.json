@@ -28,8 +28,10 @@
     "help": "./node_modules/.bin/nx help",
     "reset": "rm -rf ./apps/qwerty/src/app/map && cp -R ./reset/ ./apps/qwerty/src/app",
     "schematic": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent",
+    "schematic:run": "ng g .:promote-component-to-lazy-loaded-module  --project qwerty --componentClassName MapComponent",
     "schematic:dry-run": "./node_modules/.bin/nx workspace-schematic promote-component-to-lazy-loaded-module --project qwerty --componentClassName MapComponent --dry-run",
-    "schematic:build": "tsc -p tools/tsconfig.tools.json"
+    "schematic:build": "tsc -p tools/tsconfig.tools.json",
+    "schematic:reset-build-run": "npm run reset && npm run schematic:build && npm run schematic:run"
   },
   "private": true,
   "dependencies": {
