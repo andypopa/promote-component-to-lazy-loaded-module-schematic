@@ -307,14 +307,20 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     const featureRecorder = host.beginUpdate(featurePath);
 
-    const addDeclaration = addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
-    if (addDeclaration instanceof InsertChange) {
-      featureRecorder.insertLeft(
-        (addDeclaration as InsertChange).pos,
-        (addDeclaration as InsertChange).toAdd
-      )
-    }
+    const addDeclarations = addDeclarationToModule(featureSrc, featurePath, options.componentClassName, newComponentPath);
 
+    for (const addDeclaration of addDeclarations) {
+      if (addDeclaration instanceof InsertChange) {
+        console.log('ADD DECL', addDeclaration);
+        featureRecorder.insertLeft(
+          (addDeclaration as InsertChange).pos,
+          (addDeclaration as InsertChange).toAdd
+        )
+      } else {
+        console.log('!!! CHANGE NOT INSTANCEOF INSERTCHANGE', addDeclaration)
+      }
+    };
+    
     host.commitUpdate(featureRecorder);
 
     return host;
@@ -323,7 +329,7 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
 function addLazyLoadedModuleRouteToAppRoutingModule(options: any): Rule {
   return (tree: Tree) => {
-    const featureName = 'hey'; //getFeatureName(options.componentClassName);
+    const featureName = getFeatureName(options.componentClassName);
 
     const appRoutingModulePath = `apps/${
       options.project
