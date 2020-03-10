@@ -289,6 +289,16 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     host.commitUpdate(featureRoutingRecorder);
 
+    return host;
+  };
+}
+
+function addComponentDeclarationToFeatureModule(options: any): Rule {
+  return (host: Tree) => {
+    const featureName = getFeatureName(options.componentClassName);
+
+    const newComponentPath = `./${strings.dasherize(featureName)}/${strings.dasherize(featureName)}.component`;
+
     const featurePath = `${
       options.appProjectRoot
       }/src/app/${strings.dasherize(featureName)}/${strings.dasherize(
@@ -300,7 +310,7 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     const featureSrc = ts.createSourceFile(
       `${strings.dasherize(featureName)}.module.ts`,
-      featureRouting,
+      feature,
       ts.ScriptTarget.Latest,
       true
     );
@@ -311,20 +321,17 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
     for (const addDeclaration of addDeclarations) {
       if (addDeclaration instanceof InsertChange) {
-        console.log('ADD DECL', addDeclaration);
         featureRecorder.insertLeft(
           (addDeclaration as InsertChange).pos,
           (addDeclaration as InsertChange).toAdd
         )
-      } else {
-        console.log('!!! CHANGE NOT INSTANCEOF INSERTCHANGE', addDeclaration)
       }
     };
     
     host.commitUpdate(featureRecorder);
 
     return host;
-  };
+  }
 }
 
 function addLazyLoadedModuleRouteToAppRoutingModule(options: any): Rule {
@@ -724,6 +731,7 @@ export default function (schema: Schema): Rule {
       moveComponentRoutes(options),
       removeComponentImportFromAppRoutingModule(options),
       // add feature module import to app-routing.module.ts?
+      addComponentDeclarationToFeatureModule(options),
       addLazyLoadedModuleRouteToAppRoutingModule(options),
       addSharedModuleImportToLazyLoadedModule(options)
     ]);
