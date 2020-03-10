@@ -323,6 +323,8 @@ function moveComponentRoutes(options: NormalizedSchema): Rule {
 
 function addLazyLoadedModuleRouteToAppRoutingModule(options: any): Rule {
   return (tree: Tree) => {
+    const featureName = 'hey'; //getFeatureName(options.componentClassName);
+
     const appRoutingModulePath = `apps/${
       options.project
       }/src/app/app-routing.module.ts`;
@@ -331,18 +333,18 @@ function addLazyLoadedModuleRouteToAppRoutingModule(options: any): Rule {
     const appRoutingModule = tree.read(appRoutingModulePath)!.toString('utf-8');
 
     const appRoutingModuleSrc = ts.createSourceFile(
-      `${strings.dasherize(options.name)}-routing.module.ts`,
+      `app-routing.module.ts`,
       appRoutingModule,
       ts.ScriptTarget.Latest,
       true
     );
 
     const recorder = tree.beginUpdate(appRoutingModulePath);
-
+      console.log(options)
     const route = `  {
-    path: '${strings.dasherize(options.name)}',
-    loadChildren: () => import('./${strings.dasherize(options.name)}/${strings.dasherize(options.name)}.module').then(m => m.${strings.classify(options.name)}Module),
-    canActivate: [AuthGuard]
+    path: '${strings.dasherize(featureName)}',
+    loadChildren: () => import('./${strings.dasherize(featureName)}/${strings.dasherize(featureName)}.module').then(m => m.${strings.classify(featureName)}Module)
+    // canActivate: [AuthGuard]
   }`;
 
     const addRouteChange = addRoute(route, appRoutingModulePath, appRoutingModuleSrc);
